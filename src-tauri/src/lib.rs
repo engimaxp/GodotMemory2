@@ -406,6 +406,7 @@ fn open_folder(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
+        let path = path.replace('/', "\\");
         let p = std::path::Path::new(&path);
         if p.is_dir() {
             std::process::Command::new("explorer")
