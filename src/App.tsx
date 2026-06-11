@@ -84,12 +84,17 @@ function MainWindow() {
     };
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleMouseMove = useCallback(async (e: React.MouseEvent) => {
     if (!dragRef.current.startX) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      dragRef.current.dragging = true;
+      if (!dragRef.current.dragging) {
+        dragRef.current.dragging = true;
+        try {
+          await bridge.startDragging();
+        } catch {}
+      }
     }
   }, []);
 
@@ -103,7 +108,7 @@ function MainWindow() {
   const switchToPanel = useCallback(async () => {
     try {
       await bridge.setWindowMode('panel');
-      await bridge.resizeWindow(500, 700);
+      await bridge.resizeWindow(750, 1050);
     } catch {}
   }, []);
 

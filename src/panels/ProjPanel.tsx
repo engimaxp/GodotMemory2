@@ -293,7 +293,7 @@ const ProjPanel: React.FC = () => {
             onEdit={() => { setEditItem(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteProj(e.entity.id); load(); } catch {} }}
             onRun={() => { try { bridge.launchApp(e.entity.directory); } catch {} }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory); }} />
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(() => {}); }} />
         ))}
       </div>
 

@@ -401,10 +401,15 @@ fn snap_to_edge(app: tauri::AppHandle) -> Result<edge_snap::SnapResult, String> 
 
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
+    if path.is_empty() {
+        return Err("path is empty".to_string());
+    }
     #[cfg(target_os = "windows")]
     {
         let p = std::path::Path::new(&path);
-        if p.is_file() {
+        // If path looks like a file (has extension), use /select to open its parent folder.
+        // Use extension check rather than is_file() so it works even if the file doesn't exist.
+        if p.extension().is_some() {
             std::process::Command::new("explorer")
                 .arg("/select,")
                 .arg(&path)
@@ -419,10 +424,25 @@ fn open_folder(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
-            .arg(&path)
-            .spawn()
-            .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
+        let p = std::path::Path::new(&path);
+        if p.is_file() {
+            if let Some(parent) = p.parent() {
+                std::process::Command::new("open")
+                    .arg(parent.to_string_lossy().as_ref())
+                    .spawn()
+                    .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
+            } else {
+                std::process::Command::new("open")
+                    .arg(&path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
+            }
+        } else {
+            std::process::Command::new("open")
+                .arg(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
+        }
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
