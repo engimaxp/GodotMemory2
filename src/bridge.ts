@@ -160,6 +160,9 @@ export async function dbSetFastTag(id: string, isFast: boolean): Promise<void> {
 export async function dbUpdateTagColor(id: string, color: string): Promise<void> {
   return invoke('db_update_tag_color', { id, color });
 }
+export async function dbDeleteTag(id: string): Promise<void> {
+  return invoke('db_delete_tag', { id });
+}
 
 // ═══════════════════════════ Images ═══════════════════════════
 

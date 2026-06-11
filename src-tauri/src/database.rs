@@ -257,11 +257,11 @@ impl Database {
         let dir = normalize_path(&engine.directory);
         let console_dir = normalize_path(&engine.console_dir);
         self.conn.execute(
-            "INSERT INTO Engine (Id,Version,Directory,IsEnc,EncKey,HasConsole,ConsoleDir,Name,IsDefault,MainVersion,\"Desc\",Sort)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+            "INSERT INTO Engine (Id,Version,Directory,IsEnc,EncKey,HasConsole,ConsoleDir,Name,IsDefault,MainVersion,\"Desc\",Sort,IsDelete)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
             params![id, engine.version, dir, engine.is_enc as i32, engine.enc_key,
                     engine.has_console as i32, console_dir, engine.name,
-                    engine.is_default as i32, engine.main_version, engine.desc, sort],
+                    engine.is_default as i32, engine.main_version, engine.desc, sort, 0i32],
         ).map_err(|e| e.to_string())?;
         self.add_tag_relations(&tag_ids, &id, 0)?;
         Ok(id)
@@ -833,6 +833,14 @@ impl Database {
 
     pub fn update_tag_color(&self, id: &str, color: &str) -> Result<(), String> {
         self.conn.execute("UPDATE Tag SET Color=?1 WHERE Id=?2", params![color, id])
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn delete_tag(&self, id: &str) -> Result<(), String> {
+        self.conn.execute("DELETE FROM TagRelation WHERE TagId=?1", params![id])
+            .map_err(|e| e.to_string())?;
+        self.conn.execute("DELETE FROM Tag WHERE Id=?1", params![id])
             .map_err(|e| e.to_string())?;
         Ok(())
     }

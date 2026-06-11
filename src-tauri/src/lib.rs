@@ -275,6 +275,12 @@ fn db_update_tag_color(app: tauri::AppHandle, id: String, color: String) -> Resu
     db.update_tag_color(&id, &color)
 }
 
+#[tauri::command]
+fn db_delete_tag(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let db = database::Database::new(&app)?;
+    db.delete_tag(&id)
+}
+
 // ═══════════════════ Image Commands ═══════════════════
 
 #[tauri::command]
@@ -830,7 +836,7 @@ pub fn run() {
             db_list_diaries, db_add_diary, db_update_diary, db_delete_diary,
             db_get_diary_detail, db_save_diary_detail, db_query_diary_details, db_query_all_diary_details,
             db_list_tags, db_query_tag_by_name_like, db_insert_tag,
-            db_set_fast_tag, db_update_tag_color,
+            db_set_fast_tag, db_update_tag_color, db_delete_tag,
             db_copy_image_to_cache, db_load_image, db_load_icon, db_extract_exe_icon,
             get_settings, save_settings,
             set_window_mode, get_window_mode, start_dragging, toggle_panel,

@@ -140,7 +140,7 @@ const EngineEditModal: React.FC<EngineEditModalProps> = ({ engine, initialTagIds
               <button className="btn btn-secondary btn-small" onClick={() => handleAddTag()}>{t("Add")}</button>
               {/* Auto-complete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto" }}>
+                <div style={{ position: "absolute", bottom: "100%", left: 0, right: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", marginBottom: 4 }}>
                   {suggestions.map(tag => (
                     <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2 }}
                       onClick={() => handleSelectSuggestion(tag.name)}>
