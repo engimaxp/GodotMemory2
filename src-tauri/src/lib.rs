@@ -407,19 +407,25 @@ fn open_folder(path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         let p = std::path::Path::new(&path);
-        // If path looks like a file (has extension), use /select to open its parent folder.
-        // Use extension check rather than is_file() so it works even if the file doesn't exist.
-        if p.extension().is_some() {
+        if p.is_dir() {
+            std::process::Command::new("explorer")
+                .arg(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
+        } else if p.is_file() {
+            std::process::Command::new("explorer")
+                .arg("/select,")
+                .arg(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
+        } else if p.parent().is_some_and(|pp| pp.exists()) {
             std::process::Command::new("explorer")
                 .arg("/select,")
                 .arg(&path)
                 .spawn()
                 .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
         } else {
-            std::process::Command::new("explorer")
-                .arg(&path)
-                .spawn()
-                .map_err(|e| format!("Failed to open folder '{}': {}", path, e))?;
+            return Err(format!("Path does not exist: {}", path));
         }
     }
     #[cfg(target_os = "macos")]
