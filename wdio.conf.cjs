@@ -1,8 +1,27 @@
 const path = require('path');
+const fs = require('fs');
+
+// Auto-generate app.html before tests
+const distIndex = path.join(__dirname, 'dist', 'index.html');
+const mockTauri = path.join(__dirname, 'e2e', 'shared', 'mock-tauri.js');
+const testUtils = path.join(__dirname, 'e2e', 'shared', 'test-utils.js');
+const appHtml = path.join(__dirname, 'e2e', 'app.html');
+
+if (fs.existsSync(distIndex)) {
+  const html = fs.readFileSync(distIndex, 'utf-8');
+  const mock = '<script>\n' + fs.readFileSync(mockTauri, 'utf-8') + '\n' +
+    fs.readFileSync(testUtils, 'utf-8') + '\n<\/script>';
+  fs.writeFileSync(appHtml, html.replace('</head>', mock + '\n</head>'), 'utf-8');
+}
+
+const specsRoot = path.join(__dirname, 'e2e');
+const testFiles = fs.readdirSync(specsRoot)
+  .filter(f => f.endsWith('.test.cjs'))
+  .map(f => path.join(specsRoot, f));
 
 exports.config = {
   runner: 'local',
-  specs: ['./e2e/bubble.test.cjs'],
+  specs: testFiles,
   capabilities: [{
     maxInstances: 1,
     browserName: 'MicrosoftEdge',
@@ -19,7 +38,8 @@ exports.config = {
     ['static-server', {
       port: 4567,
       folders: [
-        { mount: '/', path: path.join(__dirname, 'e2e') }
+        { mount: '/', path: path.join(__dirname, 'e2e') },
+        { mount: '/', path: path.join(__dirname, 'dist') }
       ]
     }],
     ['edgedriver', {

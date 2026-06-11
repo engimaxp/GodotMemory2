@@ -1,0 +1,91 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: GodotMemory-Windows
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: GodotMemory-Linux
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: GodotMemory-macOS
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tauri application
+        run: npx tauri build
+
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: src-tauri/target/release/bundle/
+          if-no-files-found: warn
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Flatten artifacts for release
+        run: |
+          mkdir -p release_assets
+          find . -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.deb" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release_assets/ \;
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release_assets/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
