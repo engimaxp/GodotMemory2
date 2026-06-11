@@ -230,10 +230,6 @@ export async function detectEngineVersion(path: string): Promise<string[]> {
 export async function scanProjectFile(path: string): Promise<Record<string, string>> {
   return invoke('scan_project_file', { path });
 }
-export async function openSettingsWindow(): Promise<void> {
-  return invoke('open_settings_window');
-}
-
 // ═══════════════════════════ Data Import ═══════════════════════════
 
 export interface ImportResult {

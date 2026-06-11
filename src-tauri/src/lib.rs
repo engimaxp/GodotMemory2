@@ -669,32 +669,6 @@ fn scan_project_file(path: String) -> Result<serde_json::Value, String> {
     Ok(serde_json::Value::Object(result))
 }
 
-#[tauri::command]
-fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("settings") {
-        let _ = window.show();
-        let _ = window.set_focus();
-        return Ok(());
-    }
-
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        "settings",
-        tauri::WebviewUrl::App("index.html".into()),
-    )
-    .title("Settings")
-    .inner_size(360.0, 460.0)
-    .resizable(false)
-    .decorations(false)
-    .transparent(true)
-    .always_on_top(true)
-    .center()
-    .build()
-    .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
 // ───────────────────────────── Entry Point ─────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -722,12 +696,9 @@ pub fn run() {
 
             // Build system tray
             let show_hide = tauri::menu::MenuItemBuilder::with_id("show_hide", "显示/隐藏").build(app)?;
-            let settings = tauri::menu::MenuItemBuilder::with_id("settings", "设置").build(app)?;
             let quit = tauri::menu::MenuItemBuilder::with_id("quit", "退出").build(app)?;
             let menu = tauri::menu::MenuBuilder::new(app)
                 .item(&show_hide)
-                .separator()
-                .item(&settings)
                 .separator()
                 .item(&quit)
                 .build()?;
@@ -746,9 +717,6 @@ pub fn run() {
                                     let _ = window.set_focus();
                                 }
                             }
-                        }
-                        "settings" => {
-                            let _ = app.emit("open-settings", ());
                         }
                         "quit" => {
                             app.exit(0);
@@ -842,7 +810,6 @@ pub fn run() {
             set_window_mode, get_window_mode, start_dragging, toggle_panel,
             resize_window, get_screen_work_area, snap_to_edge,
             open_folder, launch_app, launch_project, detect_engine_version, scan_project_file,
-            open_settings_window,
             db_import_from_path,
         ])
         .run(tauri::generate_context!())
