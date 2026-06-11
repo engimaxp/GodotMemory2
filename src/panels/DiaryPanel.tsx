@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import type { Diary, DiaryDetail } from '../types';
 import * as bridge from '../bridge';
 import { useOnce } from '../hooks/usePanelManager';
+import { useI18n } from '../i18n';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -20,6 +21,7 @@ interface MonthGroup {
 }
 
 const DiaryPanel: React.FC = () => {
+  const { t } = useI18n();
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [details, setDetails] = useState<DiaryDetail[]>([]);
   const [selectedDiary, setSelectedDiary] = useState<Diary | null>(null);
@@ -128,8 +130,8 @@ const DiaryPanel: React.FC = () => {
       {/* Column 1: Diary List */}
       <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)' }}>Diaries</span>
-          <button className="btn btn-primary btn-small" onClick={() => setShowNew(true)}>+</button>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)' }}>{t("diary.list_header")}</span>
+          <button className="btn btn-primary btn-small" onClick={() => setShowNew(true)} title={t("diary.new")}>+</button>
         </div>
         {diaries.map(d => (
           <button
@@ -143,13 +145,13 @@ const DiaryPanel: React.FC = () => {
           >
             <div className="item-info">
               <div className="item-name">{d.name}</div>
-              <div className="item-sub">{d.desc || 'No description'}</div>
+              <div className="item-sub">{d.desc || t("common.no_description")}</div>
             </div>
           </button>
         ))}
         {diaries.length === 0 && (
           <div className="empty-state" style={{ padding: 20 }}>
-            <p>No diaries</p>
+            <p>{t("diary.no_diaries")}</p>
           </div>
         )}
       </div>
@@ -162,19 +164,19 @@ const DiaryPanel: React.FC = () => {
               <button
                 className="diary-sort-btn"
                 onClick={() => setAscending(v => !v)}
-                title={ascending ? 'Newest first' : 'Oldest first'}
+                title={ascending ? t("diary.sort_newest") : t("diary.sort_oldest")}
               >
                 {ascending ? '↑' : '↓'}
               </button>
               <span className="panel-count">{details.length}</span>
               <button className="btn btn-primary btn-small" style={{ marginLeft: 'auto' }} onClick={writeToday}>
-                + Today
+                {t("diary.write_today")}
               </button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {monthGroups.length === 0 && (
                 <div className="empty-state">
-                  <p>No entries yet</p>
+                  <p>{t("diary.no_entries")}</p>
                 </div>
               )}
               {monthGroups.map(g => (
@@ -205,7 +207,7 @@ const DiaryPanel: React.FC = () => {
         )}
         {!selectedDiary && (
           <div className="empty-state">
-            <p>Select a diary</p>
+            <p>{t("diary.select_diary")}</p>
           </div>
         )}
       </div>
@@ -216,20 +218,20 @@ const DiaryPanel: React.FC = () => {
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{selectedDetail.create_date}</span>
-              <button className="btn btn-primary btn-small" onClick={saveContent}>Save</button>
+              <button className="btn btn-primary btn-small" onClick={saveContent}>{t("diary.save")}</button>
             </div>
             <textarea
               className="form-textarea"
               style={{ flex: 1, minHeight: 200 }}
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Write your diary entry..."
+              placeholder={t("diary.placeholder")}
             />
           </>
         )}
         {selectedDiary && !selectedDetail && (
           <div className="empty-state">
-            <p>Select a date</p>
+            <p>{t("diary.select_date")}</p>
           </div>
         )}
       </div>
@@ -239,19 +241,19 @@ const DiaryPanel: React.FC = () => {
         <div className="modal-overlay" onClick={() => setShowNew(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
             <div className="modal-header">
-              <span className="modal-title">New Diary</span>
+              <span className="modal-title">{t("diary.new")}</span>
               <button className="modal-close" onClick={() => setShowNew(false)}>×</button>
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">Name</label>
+                <label className="form-label">{t("diary.name")}</label>
                 <input className="form-input" value={editName} onChange={e => setEditName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addDiary()} placeholder="Diary name" />
+                  onKeyDown={e => e.key === 'Enter' && addDiary()} placeholder={t("diary.name_placeholder")} />
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowNew(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={addDiary} disabled={!editName.trim()}>Create</button>
+              <button className="btn btn-secondary" onClick={() => setShowNew(false)}>{t("Cancel")}</button>
+              <button className="btn btn-primary" onClick={addDiary} disabled={!editName.trim()}>{t("common.create")}</button>
             </div>
           </div>
         </div>

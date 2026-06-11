@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import type { Settings, Tag } from '../types';
 import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
@@ -7,6 +7,27 @@ interface SettingPanelProps {
   settings: Settings | null;
   onUpdateSettings: (s: Partial<Settings>) => void;
 }
+
+const ColorSwatch: React.FC<{ color: string; onChange: (color: string) => void }> = ({ color, onChange }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <div
+        onClick={() => inputRef.current?.click()}
+        style={{
+          width: 16, height: 16, borderRadius: 4,
+          background: color, cursor: "pointer",
+          border: "2px solid var(--border-color)",
+          transition: "border-color 150ms ease",
+          flexShrink: 0,
+        }}
+        className="color-swatch"
+        title="Change color"
+      />
+      <input ref={inputRef} type="color" value={color} onChange={e => onChange(e.target.value)} style={{ display: "none" }} />
+    </>
+  );
+};
 
 const OLD_DB_PATH = "C:/AEntrance/tools/GodotMemory/data/GodotMemory.db";
 
@@ -81,7 +102,7 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
     <div className="panel-container">
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div className="setting-item">
-          <div className="setting-info"><span className="setting-label">{t("setting.theme")}</span><span className="setting-desc">{theme === "light" ? "Light" : "Dark"}</span></div>
+          <div className="setting-info"><span className="setting-label">{t("setting.theme")}</span><span className="setting-desc">{theme === "light" ? t("settings.Light") : t("settings.Dark")}</span></div>
           <div className={"switch " + (theme === "dark" ? "switch--active" : "")} onClick={toggleTheme}><div className="switch-thumb" /></div>
         </div>
 
@@ -95,14 +116,14 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
         <div className="setting-item setting-item--column">
           <div className="setting-info"><span className="setting-label">{t("setting.default_panel")}</span></div>
           <select className="form-select" value={settings.default_panel} onChange={e => handleDefaultPanel(e.target.value)} style={{ marginTop: 4 }}>
-            {["Engine", "Proj", "Asset", "Tool", "Diary", "Setting"].map(p => <option key={p} value={p}>{p}</option>)}
+            {["Engine", "Proj", "Asset", "Tool", "Diary", "Setting"].map(p => <option key={p} value={p}>{t(p)}</option>)}
           </select>
         </div>
 
         <div className="setting-item setting-item--column">
           <div className="setting-info"><span className="setting-label">{t("setting.screenshot_dir")}</span></div>
           <div className="form-row" style={{ marginTop: 4 }}>
-            <input className="form-input" value={settings.screen_shot_dir} onChange={e => onUpdateSettings({ screen_shot_dir: e.target.value })} placeholder="Path to screenshot folder" />
+            <input className="form-input" value={settings.screen_shot_dir} onChange={e => onUpdateSettings({ screen_shot_dir: e.target.value })} placeholder={t("setting.placeholder_path_to_screenshot_folder")} />
             <button className="btn btn-secondary" onClick={handleScreenShotDir}>{t("setting.browse")}</button>
           </div>
         </div>
@@ -139,17 +160,19 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
         {/* Tag Management */}
         <div className="h-px" style={{ background: "var(--border-color)" }} />
         <div className="setting-item setting-item--column">
-          <div className="setting-info"><span className="setting-label">Tags</span><span className="setting-desc">Manage tags and quick access</span></div>
+          <div className="setting-info"><span className="setting-label">{t("settings.fast_tags_management")}</span></div>
           {allTypeTags.map(group => (
             <div key={group.type} style={{ width: "100%" }}>
-              <div className="setting-label" style={{ marginTop: 8, marginBottom: 4 }}>{group.type}</div>
+              <div className="setting-label" style={{ marginTop: 8, marginBottom: 4, fontSize: 11, opacity: 0.7 }}>{t(group.type)}</div>
               <div className="flex flex-wrap gap-1">
                 {group.tags.map(tag => (
-                  <div key={tag.id} className="tag-chip" style={{ background: "#" + tag.color + "22", color: "#" + tag.color, border: "1px solid #" + tag.color + "44", display: "flex", alignItems: "center", gap: 4, padding: "2px 8px" }}>
+                  <div key={tag.id} className="tag-chip" style={{ background: "#" + tag.color + "22", color: "#" + tag.color, border: "1px solid #" + tag.color + "44", display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", width: "auto" }}>
                     <input type="checkbox" checked={tag.is_fast} onChange={() => handleToggleFast(tag)} style={{ width: 12, height: 12, accentColor: "#" + tag.color }} title="Quick tag" />
                     <span className="text-xs">{tag.name}</span>
-                    <input type="color" value={"#" + tag.color} onChange={e => handleColorChange(tag, e.target.value.replace("#", ""))} style={{ width: 16, height: 16, padding: 0, border: "none", cursor: "pointer" }} title="Change color" />
-                    <button className="text-xs opacity-50 hover:opacity-100" style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }} onClick={async () => { /* delete not directly supported - skip */ }}>x</button>
+                    <ColorSwatch color={"#" + tag.color} onChange={c => handleColorChange(tag, c.replace("#", ""))} />
+                    <button className="tag-chip-delete" onClick={async () => {}}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                    </button>
                   </div>
                 ))}
                 {group.tags.length === 0 && <span className="text-xs" style={{ color: "var(--ink-faint)" }}>No tags</span>}
@@ -174,6 +197,9 @@ const settingStyles = `
 .switch--active .switch-thumb { transform: translateX(16px); }
 .slider { width: 100%; margin-top: 4px; -webkit-appearance: none; height: 4px; border-radius: 2px; background: var(--border-color); outline: none; }
 .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-blue); cursor: pointer; }
+.color-swatch:hover { border-color: var(--accent-blue) !important; }
+.tag-chip-delete { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: none; border-radius: 4px; background: rgba(0,0,0,0.08); color: inherit; cursor: pointer; padding: 0; flex-shrink: 0; transition: background 150ms ease; opacity: 0.5; }
+.tag-chip-delete:hover { background: rgba(239,68,68,0.2); color: var(--danger); opacity: 1; }
 `;
 
 export const SettingsStyles = () => <style>{settingStyles}</style>;

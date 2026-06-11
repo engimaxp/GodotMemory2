@@ -1,6 +1,7 @@
 import React from 'react';
 import { PanelName, SnapEdge } from '../types';
 import '../styles/PopupPanel.css';
+import { useI18n } from '../i18n';
 
 interface PopupPanelProps {
   visible: boolean;
@@ -33,6 +34,7 @@ function getSnapClass(edge: string): string {
 export const PopupPanel: React.FC<PopupPanelProps> = ({
   visible, onClose, snappedEdge, activePanel, onPanelChange, children
 }) => {
+  const { t } = useI18n();
   return (
     <div className={`popup ${visible ? 'popup--visible' : ''} ${getSnapClass(snappedEdge)}`}>
       <div className="popup-sidebar">
@@ -42,7 +44,7 @@ export const PopupPanel: React.FC<PopupPanelProps> = ({
               key={name}
               className={`sidebar-btn ${activePanel === name ? 'active' : ''}`}
               onClick={() => onPanelChange(name)}
-              title={info.label}
+              title={t(info.label)}
               data-no-drag="true"
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +69,7 @@ export const PopupPanel: React.FC<PopupPanelProps> = ({
 
       <div className="popup-content" data-tauri-drag-region>
         <div className="popup-header" data-tauri-drag-region>
-          <h2 className="popup-title">{panelIcons[activePanel].label}</h2>
+          <h2 className="popup-title">{t(panelIcons[activePanel].label)}</h2>
         </div>
         <div className="popup-body" data-no-drag="true">
           {children}

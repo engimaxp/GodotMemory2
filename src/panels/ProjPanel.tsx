@@ -49,29 +49,29 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <div className="modal-header">
-          <span className="modal-title">{isNew ? "Add Proj" : "Edit Proj"}</span>
+          <span className="modal-title">{isNew ? t("proj.add") : t("proj.edit")}</span>
           <button className="modal-close" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
         <div className="modal-body">
-          <div className="form-group"><label className="form-label">Name</label><input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="Proj name" /></div>
-          <div className="form-group"><label className="form-label">Executable Path</label><input className="form-input" value={dir} onChange={e => setDir(e.target.value)} placeholder="C:/path/to/godot.exe" /></div>
+          <div className="form-group"><label className="form-label">{t("proj.name")}</label><input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t("proj.name_placeholder")} /></div>
+          <div className="form-group"><label className="form-label">{t("proj.directory")}</label><input className="form-input" value={dir} onChange={e => setDir(e.target.value)} placeholder={t("proj.dir_placeholder")} /></div>
           <div className="form-row">
-            <div className="form-group"><label className="form-label">Main Version</label><input className="form-input" value={mainVersion} onChange={e => setMainVersion(e.target.value)} placeholder="4" /></div>
-            <div className="form-group"><label className="form-label">Version</label><input className="form-input" value={version} onChange={e => setVersion(e.target.value)} placeholder="4.2" /></div>
+            <div className="form-group"><label className="form-label">{t("engine.main_version")}</label><input className="form-input" value={mainVersion} onChange={e => setMainVersion(e.target.value)} placeholder={t("proj.main_version_placeholder")} /></div>
+            <div className="form-group"><label className="form-label">{t("engine.version")}</label><input className="form-input" value={version} onChange={e => setVersion(e.target.value)} placeholder={t("proj.version_placeholder")} /></div>
           </div>
-          <div className="form-group"><label className="form-label">Engine</label>
+          <div className="form-group"><label className="form-label">{t("proj.engine")}</label>
             <select className="form-select" value={engineId} onChange={e => setEngineId(e.target.value)}>
-              <option value="">Select engine...</option>
+              <option value="">{t("proj.select_engine")}</option>
               {engines.filter(eng => eng.entity.main_version === (parseInt(mainVersion) || 4)).map(eng => (
                 <option key={eng.entity.id} value={eng.entity.id}>{eng.entity.name} ({eng.entity.version})</option>
               ))}
             </select>
           </div>
-          <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" /></div>
+          <div className="form-group"><label className="form-label">{t("proj.desc")}</label><textarea className="form-textarea" value={desc} onChange={e => setDesc(e.target.value)} placeholder={t("proj.desc_placeholder")} /></div>
           <div className="form-group">
-            <label className="form-label">Tags</label>
+            <label className="form-label">{t("common.tags")}</label>
             {/* Fast tags */}
             {fastTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
@@ -91,7 +91,7 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
             {/* Tag input with auto-complete */}
             <div className="tag-input-area" ref={suggestRef} style={{ position: "relative" }}>
               <input className="tag-input" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleAddTag(); }} placeholder={t("tag.add")} />
-              <button className="btn btn-secondary btn-small" onClick={() => handleAddTag()}>Add</button>
+              <button className="btn btn-secondary btn-small" onClick={() => handleAddTag()}>{t("Add")}</button>
               {/* Auto-complete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
                 <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto" }}>
@@ -107,8 +107,8 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
           </div>
         </div>
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !name || !dir}>{saving ? "Saving..." : "Save"}</button>
+          <button className="btn btn-secondary" onClick={onClose}>{t("Cancel")}</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !name || !dir}>{saving ? t("common.saving") : t("Save")}</button>
         </div>
       </div>
     </div>
@@ -122,10 +122,10 @@ interface ProjRowProps {
   onDelete: () => void;
   onRun: () => void;
   onOpenFolder: () => void;
-  onOpenEngine?: () => void;
 }
 
-const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, onRun, onOpenFolder, onOpenEngine }) => {
+const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, onRun, onOpenFolder }) => {
+  const { t } = useI18n();
   const e = Proj.entity;
   const [iconSrc, setIconSrc] = useState<string | null>(null);
   useEffect(() => {
@@ -139,27 +139,22 @@ const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, o
         {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>}
       </div>
       <div className="item-info">
-        <div className="item-name">{e.name || "Unnamed"}</div>
+        <div className="item-name">{e.name || t("proj.unnamed")}</div>
         <div className="item-sub">{e.version} | {e.directory}</div>
-        {engineName && <div className="item-sub" style={{ fontSize: 11, opacity: 0.7 }}>Engine: {engineName}</div>}
+        {engineName && <div className="item-sub" style={{ fontSize: 11, opacity: 0.7 }}>{t("proj.engine_label", { name: engineName })}</div>}
       </div>
       <div className="item-tags">{Proj.tags.slice(0, 3).map(t => <span key={t.id} className="tag-chip" style={{ background: "#" + t.color + "22", color: "#" + t.color }}>{t.name}</span>)}</div>
       <div className="item-actions">
-        {onOpenEngine && (
-          <button className="item-btn" onClick={onOpenEngine} title="Open Engine">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-          </button>
-        )}
-        <button className="item-btn" onClick={onRun} title="Run">
+        <button className="item-btn" onClick={onRun} title={t("common.run")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
         </button>
-        <button className="item-btn" onClick={onOpenFolder} title="Open Folder">
+        <button className="item-btn" onClick={onOpenFolder} title={t("common.open_dir")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
         </button>
-        <button className="item-btn" onClick={onEdit} title="Edit">
+        <button className="item-btn" onClick={onEdit} title={t("common.edit")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
         </button>
-        <button className="item-btn danger" onClick={onDelete} title="Delete">
+        <button className="item-btn danger" onClick={onDelete} title={t("Delete")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
         </button>
       </div>
@@ -265,7 +260,7 @@ const ProjPanel: React.FC = () => {
             onChange={e => { setSearch(e.target.value); setPage(p => ({ ...p, index: 1 })); }}
             placeholder={t("search.placeholder")} />
           <span className="panel-count">({items.length}/{totalCount})</span>
-          <button className="btn btn-primary btn-small" onClick={() => { setEditItem(null); setShowEdit(true); }}>+ Add</button>
+          <button className="btn btn-primary btn-small" onClick={() => { setEditItem(null); setShowEdit(true); }}>+ {t("proj.add")}</button>
         </div>
         {/* Tag filter bar */}
         {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
@@ -290,7 +285,7 @@ const ProjPanel: React.FC = () => {
               <input className="tag-input" value={tagSearchText}
                 onChange={e => setTagSearchText(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
-                placeholder="Search tags..." style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
+                placeholder={t("proj.search_tags_placeholder")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
               {showTagSuggestions && tagSuggestions.length > 0 && (
                 <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
                   {tagSuggestions.map(tag => (
@@ -305,7 +300,7 @@ const ProjPanel: React.FC = () => {
             {searchTagIds.length > 0 && (
               <span className="tag-chip" style={{ background: "var(--bg-secondary)", color: "var(--ink-faint)", cursor: "pointer", border: "1px solid var(--border-color)" }}
                 onClick={() => { setSearchTagIds([]); setPage(p => ({ ...p, index: 1 })); }}>
-                x clear
+                x {t("search.clear")}
               </span>
             )}
           </div>
@@ -329,13 +324,10 @@ const ProjPanel: React.FC = () => {
               if (engine) {
                 bridge.launchProject(engine.directory, e.entity.directory);
               } else {
-                showToast('No engine associated with this project');
+                showToast(t("proj.no_engine"));
               }
             }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }}
-            onOpenEngine={e.entity.engine_id && engineMap[e.entity.engine_id] ? () => {
-              window.dispatchEvent(new CustomEvent('switch-panel', { detail: 'Engine' }));
-            } : undefined} />
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
         ))}
       </div>
 
