@@ -12,14 +12,5 @@
     "projs",
     "RGBQUAD",
     "segs"
-  ],
-  "files.exclude": {
-    "node_modules/": "explorerExcludedFiles",
-    "dist/": "explorerExcludedFiles",
-    "src-tauri/target/": "explorerExcludedFiles",
-    "*.log": "explorerExcludedFiles",
-    ".DS_Store": "explorerExcludedFiles",
-    ".codegraph/": "explorerExcludedFiles",
-    ".omo/": "explorerExcludedFiles"
-  }
+  ]
 }
