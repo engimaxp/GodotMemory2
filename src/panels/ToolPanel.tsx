@@ -1,21 +1,35 @@
 ﻿import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Tool, Tag, EntityWithExtras, Page } from '../types';
+import type { Tool, Tag, ImageRecord, EntityWithExtras, Page } from '../types';
 import { TagType } from '../types';
 import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
 import { useDebounce } from '../hooks/usePanelManager';
 import { useTagSelector } from '../hooks/useTagSelector';
 import { useToast } from '../components/Toast';
+import ScreenshotView from '../components/ScreenshotView';
+import ImageManager from '../components/ImageManager';
 import '../styles/panels.css';
 
 interface ToolEditModalProps {
   tool: Partial<Tool> | null;
   initialTagIds?: string[];
+  initialImages?: ImageRecord[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, onClose, onSaved }) => {
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^["']|["']$/g, '');
+}
+
+function extractFileName(path: string): string {
+  const normalized = normalizePath(path);
+  const segs = normalized.split('/');
+  const last = segs[segs.length - 1] || '';
+  return last.replace(/\.\w+$/, '');
+}
+
+const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, initialImages, onClose, onSaved }) => {
   const { t } = useI18n();
   const isNew = !tool?.id;
   const [name, setName] = useState(tool?.name ?? "");
@@ -23,6 +37,35 @@ const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, onCl
   const [link, setLink] = useState(tool?.link ?? "");
   const [desc, setDesc] = useState(tool?.desc ?? "");
   const [saving, setSaving] = useState(false);
+  const [imageRecords, setImageRecords] = useState<ImageRecord[]>(initialImages || []);
+  const [iconId, setIconId] = useState<string | null>(tool?.icon ?? null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (tool?.icon) {
+      bridge.dbLoadImage(tool.icon).then(setIconPreview).catch(() => setIconPreview(null));
+    }
+  }, []);
+
+  const dirTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleDirChange = (value: string) => {
+    const normalized = normalizePath(value);
+    setDir(normalized);
+    if (!name && normalized.trim()) {
+      const extracted = extractFileName(normalized);
+      if (extracted) setName(extracted);
+    }
+    if (dirTimerRef.current) clearTimeout(dirTimerRef.current);
+    dirTimerRef.current = setTimeout(async () => {
+      if (!normalized.trim() || !normalized.match(/\.\w+$/)) return;
+      try {
+        const record = await bridge.dbExtractExeIcon(normalized.trim());
+        setIconId(record.id);
+        const b64 = await bridge.dbLoadImage(record.id);
+        if (b64) setIconPreview(b64);
+      } catch { /* ignore */ }
+    }, 600);
+  };
+  useEffect(() => () => { if (dirTimerRef.current) clearTimeout(dirTimerRef.current); }, []);
 
   const {
     tagIds, setTagIds, allTags, fastTags, tagInput, setTagInput,
@@ -33,9 +76,10 @@ const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, onCl
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data: Partial<Tool> = { name, directory: dir, link, desc };
-      if (isNew) await bridge.dbAddTool(data, tagIds, []);
-      else if (tool?.id) await bridge.dbUpdateTool({ ...data, id: tool.id } as Tool, tagIds, []);
+      const data: Partial<Tool> = { name, directory: dir, link, desc, icon: iconId ?? tool?.icon ?? '' };
+      const imageIds = imageRecords.map(r => r.id);
+      if (isNew) await bridge.dbAddTool(data, tagIds, imageIds);
+      else if (tool?.id) await bridge.dbUpdateTool({ ...data, id: tool.id } as Tool, tagIds, imageIds);
       onSaved(); onClose();
     } catch (e) { console.error(e); } finally { setSaving(false); }
   };
@@ -50,8 +94,14 @@ const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, onCl
           </button>
         </div>
         <div className="modal-body">
+          {iconPreview && (
+            <div className="form-group" style={{ alignItems: "center", display: "flex", gap: 8 }}>
+              <img src={iconPreview} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: "contain" }} />
+              <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>{t("tool.icon_extracted")}</span>
+            </div>
+          )}
           <div className="form-group"><label className="form-label">{t("tool.name")}</label><input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t("tool.name_placeholder")} /></div>
-          <div className="form-group"><label className="form-label">{t("tool.executable_label")}</label><input className="form-input" value={dir} onChange={e => setDir(e.target.value)} placeholder={t("tool.executable_placeholder")} /></div>
+          <div className="form-group"><label className="form-label">{t("tool.executable_label")}</label><input className="form-input" value={dir} onChange={e => handleDirChange(e.target.value)} placeholder={t("tool.executable_placeholder")} /></div>
           <div className="form-group"><label className="form-label">{t("tool.link")}</label><input className="form-input" value={link} onChange={e => setLink(e.target.value)} placeholder={t("tool.link_placeholder")} /></div>
           <div className="form-group"><label className="form-label">{t("tool.desc")}</label><textarea className="form-textarea" value={desc} onChange={e => setDesc(e.target.value)} placeholder={t("tool.desc_placeholder")} /></div>
           <div className="form-group">
@@ -89,6 +139,10 @@ const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, onCl
               )}
             </div>
           </div>
+          <div className="form-group">
+            <label className="form-label">{t("common.screenshots")}</label>
+            <ImageManager initialImages={imageRecords} onChange={setImageRecords} />
+          </div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{t("Cancel")}</button>
@@ -101,13 +155,15 @@ const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, onCl
 
 interface ToolRowProps {
   Tool: EntityWithExtras<Tool>;
+  showScreenshots?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onRun: () => void;
   onOpenFolder: () => void;
+  onStarToggle: (star: boolean) => void;
 }
 
-const ToolRow: React.FC<ToolRowProps> = ({ Tool, onEdit, onDelete, onRun, onOpenFolder }) => {
+const ToolRow: React.FC<ToolRowProps> = ({ Tool, showScreenshots, onEdit, onDelete, onRun, onOpenFolder, onStarToggle }) => {
   const e = Tool.entity;
   const [iconSrc, setIconSrc] = useState<string | null>(null);
   useEffect(() => {
@@ -116,6 +172,37 @@ const ToolRow: React.FC<ToolRowProps> = ({ Tool, onEdit, onDelete, onRun, onOpen
     }
   }, [e.icon]);
   const { t } = useI18n();
+  if (showScreenshots) {
+    return (
+      <div className="item-row">
+        <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#f59e0b" }}>
+          {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>T</span>}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <ScreenshotView images={Tool.images} />
+        </div>
+        <div className="item-actions">
+          <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
+            {e.star
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
+          </button>
+          <button className="item-btn" onClick={onRun} title={t("tool.run")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+          </button>
+          <button className="item-btn" onClick={onOpenFolder} title={t("common.open_dir")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+          </button>
+          <button className="item-btn" onClick={onEdit} title={t("common.edit")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+          </button>
+          <button className="item-btn danger" onClick={onDelete} title={t("Delete")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="item-row">
       <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#f59e0b" }}>
@@ -127,6 +214,11 @@ const ToolRow: React.FC<ToolRowProps> = ({ Tool, onEdit, onDelete, onRun, onOpen
       </div>
       <div className="item-tags">{Tool.tags.slice(0, 3).map(t => <span key={t.id} className="tag-chip" style={{ background: "#" + t.color + "22", color: "#" + t.color }}>{t.name}</span>)}</div>
       <div className="item-actions">
+        <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
+          {e.star
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
+        </button>
         <button className="item-btn" onClick={onRun} title={t("tool.run")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
         </button>
@@ -153,9 +245,11 @@ const ToolPanel: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState<Page>({ index: 1, size: 30 });
   const [editItemTags, setEditItemTags] = useState<string[]>([]);
+  const [editItemImages, setEditItemImages] = useState<ImageRecord[]>([]);
   const [editTool, setEditTool] = useState<Partial<Tool> | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showScreenshots, setShowScreenshots] = useState(false);
   // Tag search filtering
   const [searchTagIds, setSearchTagIds] = useState<string[]>([]);
   const [allSearchTags, setAllSearchTags] = useState<Tag[]>([]);
@@ -233,51 +327,60 @@ const ToolPanel: React.FC = () => {
             onChange={e => { setSearch(e.target.value); setPage(p => ({ ...p, index: 1 })); }}
             placeholder={t("search.placeholder")} />
           <span className="panel-count">({Tools.length}/{totalCount})</span>
-          <button className="btn btn-primary btn-small" onClick={() => { setEditTool(null); setShowEdit(true); }}>+ {t("tool.add")}</button>
+          <button className="btn btn-primary btn-small" onClick={() => { setEditTool(null); setEditItemTags([]); setEditItemImages([]); setShowEdit(true); }}>+ {t("tool.add")}</button>
         </div>
-        {/* Tag filter bar */}
-        {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
-          <div className="flex flex-wrap gap-1">
-            {allSearchTags.filter(t => t.is_fast || searchTagIds.includes(t.id)).slice(0, 15).map(tag => (
-              <span key={tag.id}
-                className="tag-chip cursor-pointer"
-                style={{
-                  background: searchTagIds.includes(tag.id) ? "#" + tag.color + "44" : "#" + tag.color + "22",
-                  color: "#" + tag.color,
-                  border: "1px solid #" + tag.color + (searchTagIds.includes(tag.id) ? "88" : "44"),
-                }}
-                onClick={() => {
-                  setSearchTagIds(prev =>
-                    prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
-                  );
-                  setPage(p => ({ ...p, index: 1 }));
-                }}
-              >{tag.name}</span>
-            ))}
-            <div ref={tagSearchRef} style={{ position: "relative", display: "inline-flex" }}>
-              <input className="tag-input" value={tagSearchText}
-                onChange={e => setTagSearchText(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
-                placeholder={t("tool.search_tags_placeholder")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
-              {showTagSuggestions && tagSuggestions.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
-                  {tagSuggestions.map(tag => (
-                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
-                      onClick={() => addSearchTag(tag.name)}>
-                      {tag.name}
-                    </div>
-                  ))}
-                </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
+            <div className="flex flex-wrap gap-1" style={{ flex: 1 }}>
+              {allSearchTags.filter(t => t.is_fast || searchTagIds.includes(t.id)).slice(0, 15).map(tag => (
+                <span key={tag.id}
+                  className="tag-chip cursor-pointer"
+                  style={{
+                    background: searchTagIds.includes(tag.id) ? "#" + tag.color + "44" : "#" + tag.color + "22",
+                    color: "#" + tag.color,
+                    border: "1px solid #" + tag.color + (searchTagIds.includes(tag.id) ? "88" : "44"),
+                  }}
+                  onClick={() => {
+                    setSearchTagIds(prev =>
+                      prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
+                    );
+                    setPage(p => ({ ...p, index: 1 }));
+                  }}
+                >{tag.name}</span>
+              ))}
+              <div ref={tagSearchRef} style={{ position: "relative", display: "inline-flex" }}>
+                <input className="tag-input" value={tagSearchText}
+                  onChange={e => setTagSearchText(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
+                  placeholder={t("tool.search_tags_placeholder")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
+                {showTagSuggestions && tagSuggestions.length > 0 && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
+                    {tagSuggestions.map(tag => (
+                      <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
+                        onClick={() => addSearchTag(tag.name)}>
+                        {tag.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {searchTagIds.length > 0 && (
+                <span className="tag-chip" style={{ background: "var(--bg-secondary)", color: "var(--ink-faint)", cursor: "pointer", border: "1px solid var(--border-color)" }}
+                  onClick={() => { setSearchTagIds([]); setPage(p => ({ ...p, index: 1 })); }}>
+                  x {t("tool.clear_filter")}
+                </span>
               )}
             </div>
-            {searchTagIds.length > 0 && (
-              <span className="tag-chip" style={{ background: "var(--bg-secondary)", color: "var(--ink-faint)", cursor: "pointer", border: "1px solid var(--border-color)" }}
-                onClick={() => { setSearchTagIds([]); setPage(p => ({ ...p, index: 1 })); }}>
-                x {t("tool.clear_filter")}
-              </span>
-            )}
-          </div>
-        )}
+          )}
+          <button className={"screenshot-toggle-btn" + (showScreenshots ? " active" : "")}
+            onClick={() => setShowScreenshots(prev => !prev)}
+            title={showScreenshots ? t("tool.switch_to_text") : t("tool.switch_to_screenshot")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="panel-list">
@@ -289,10 +392,12 @@ const ToolPanel: React.FC = () => {
         )}
         {Tools.map(e => (
           <ToolRow key={e.entity.id} Tool={e}
-            onEdit={() => { setEditTool(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
+            showScreenshots={showScreenshots}
+            onEdit={() => { setEditTool(e.entity); setEditItemTags(e.tags.map(t => t.id)); setEditItemImages(e.images || []); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteTool(e.entity.id); load(); } catch {} }}
             onRun={() => { try { bridge.launchApp(e.entity.directory); } catch {} }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }}
+            onStarToggle={async (star) => { try { await bridge.dbToggleToolStar(e.entity.id, star); load(); } catch {}}} />
         ))}
       </div>
 
@@ -311,7 +416,7 @@ const ToolPanel: React.FC = () => {
       )}
 
       {showEdit && (
-        <ToolEditModal tool={editTool} initialTagIds={editItemTags} onClose={() => setShowEdit(false)} onSaved={() => load().finally(() => setLoading(false))} />
+        <ToolEditModal tool={editTool} initialTagIds={editItemTags} initialImages={editItemImages} onClose={() => setShowEdit(false)} onSaved={() => load().finally(() => setLoading(false))} />
       )}
     </div>
   );

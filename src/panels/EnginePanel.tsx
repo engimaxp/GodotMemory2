@@ -15,6 +15,17 @@ interface EngineEditModalProps {
   onSaved: () => void;
 }
 
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^["']|["']$/g, '');
+}
+
+function extractFileName(path: string): string {
+  const normalized = normalizePath(path);
+  const segs = normalized.split('/');
+  const last = segs[segs.length - 1] || '';
+  return last.replace(/\.\w+$/, '');
+}
+
 const EngineEditModal: React.FC<EngineEditModalProps> = ({ engine, initialTagIds, onClose, onSaved }) => {
   const engineInitialTags = initialTagIds || [];
   const { t } = useI18n();
@@ -30,6 +41,40 @@ const EngineEditModal: React.FC<EngineEditModalProps> = ({ engine, initialTagIds
   const [isDefault, setIsDefault] = useState(engine?.is_default ?? false);
   const [desc, setDesc] = useState(engine?.desc ?? "");
   const [saving, setSaving] = useState(false);
+
+  const dirTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDirChange = (value: string) => {
+    const normalized = normalizePath(value);
+    setDir(normalized);
+    if (!name && normalized.trim()) {
+      const extracted = extractFileName(normalized);
+      if (extracted) setName(extracted);
+    }
+    if (dirTimerRef.current) clearTimeout(dirTimerRef.current);
+    dirTimerRef.current = setTimeout(async () => {
+      if (!normalized.trim() || !normalized.match(/\.\w+$/)) return;
+      try {
+        const parts = await bridge.detectEngineVersion(normalized.trim());
+        if (parts.length > 0) {
+          setMainVersion(parts[0]);
+          setVersion(parts.slice(0, -1).join('.') || parts[0]);
+        }
+      } catch { /* ignore */ }
+      try {
+        const dotIdx = normalized.lastIndexOf('.');
+        const slashIdx = normalized.lastIndexOf('/');
+        if (dotIdx > slashIdx) {
+          const base = normalized.substring(0, dotIdx);
+          const ext = normalized.substring(dotIdx);
+          setConsoleDir(base + '.console' + ext);
+          setHasConsole(true);
+        }
+      } catch { /* ignore */ }
+    }, 600);
+  };
+
+  useEffect(() => () => { if (dirTimerRef.current) clearTimeout(dirTimerRef.current); }, []);
 
   const {
     tagIds, setTagIds, allTags, fastTags, tagInput, setTagInput,
@@ -58,7 +103,7 @@ const EngineEditModal: React.FC<EngineEditModalProps> = ({ engine, initialTagIds
         </div>
         <div className="modal-body">
           <div className="form-group"><label className="form-label">{t("engine.name")}</label><input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t("engine.placeholder_name")} /></div>
-          <div className="form-group"><label className="form-label">{t("engine.executable")}</label><input className="form-input" value={dir} onChange={e => setDir(e.target.value)} placeholder={t("engine.placeholder_executable")} /></div>
+          <div className="form-group"><label className="form-label">{t("engine.executable")}</label><input className="form-input" value={dir} onChange={e => handleDirChange(e.target.value)} placeholder={t("engine.placeholder_executable")} /></div>
           <div className="form-row">
             <div className="form-group"><label className="form-label">{t("engine.main_version")}</label><input className="form-input" value={mainVersion} onChange={e => setMainVersion(e.target.value)} placeholder={t("engine.placeholder_main_version")} /></div>
             <div className="form-group"><label className="form-label">{t("engine.version")}</label><input className="form-input" value={version} onChange={e => setVersion(e.target.value)} placeholder={t("engine.placeholder_version")} /></div>
@@ -68,7 +113,7 @@ const EngineEditModal: React.FC<EngineEditModalProps> = ({ engine, initialTagIds
             <label className="form-checkbox"><input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} /> {t("engine.is_default")}</label>
             <label className="form-checkbox"><input type="checkbox" checked={isEnc} onChange={e => setIsEnc(e.target.checked)} /> {t("engine.is_encrypted")}</label>
           </div>
-          {hasConsole && <div className="form-group"><label className="form-label">{t("engine.console_executable")}</label><input className="form-input" value={consoleDir} onChange={e => setConsoleDir(e.target.value)} placeholder={t("engine.placeholder_console")} /></div>}
+          {hasConsole && <div className="form-group"><label className="form-label">{t("engine.console_executable")}</label><input className="form-input" value={consoleDir} onChange={e => setConsoleDir(normalizePath(e.target.value))} placeholder={t("engine.placeholder_console")} /></div>}
           {isEnc && <div className="form-group"><label className="form-label">{t("engine.enc_key")}</label><input className="form-input" value={encKey} onChange={e => setEncKey(e.target.value)} placeholder={t("engine.placeholder_enc_key")} /></div>}
           <div className="form-group"><label className="form-label">{t("engine.desc")}</label><textarea className="form-textarea" value={desc} onChange={e => setDesc(e.target.value)} placeholder={t("engine.placeholder_desc")} /></div>
           <div className="form-group">
@@ -250,7 +295,7 @@ const EnginePanel: React.FC = () => {
             onChange={e => { setSearch(e.target.value); setPage(p => ({ ...p, index: 1 })); }}
             placeholder={t("search.placeholder")} />
           <span className="panel-count">({engines.length}/{totalCount})</span>
-          <button className="btn btn-primary btn-small" onClick={() => { setEditEngine(null); setShowEdit(true); }}>{"+ " + t("Add")}</button>
+          <button className="btn btn-primary btn-small" onClick={() => { setEditEngine(null); setEditEngineTags([]); setShowEdit(true); }}>{"+ " + t("Add")}</button>
         </div>
         {/* Tag filter bar */}
         {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
@@ -343,7 +388,7 @@ const EnginePanel: React.FC = () => {
       )}
 
       {showEdit && (
-        <EngineEditModal engine={editEngine} initialTagIds={editEngineTags} onClose={() => setShowEdit(false)} onSaved={() => load().finally(() => setLoading(false))} />
+        <EngineEditModal engine={editEngine} initialTagIds={editEngineTags} onClose={() => setShowEdit(false)} onSaved={() => setPage(p => ({ ...p, index: 1 }))} />
       )}
     </div>
   );

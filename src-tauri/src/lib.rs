@@ -76,9 +76,9 @@ fn db_search_projs(app: tauri::AppHandle, search: String, tag_ids: Vec<String>, 
 }
 
 #[tauri::command]
-fn db_add_proj(app: tauri::AppHandle, proj: database::Proj, tag_ids: Vec<String>, image_paths: Vec<String>) -> Result<String, String> {
+fn db_add_proj(app: tauri::AppHandle, proj: database::Proj, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
     let db = database::Database::new(&app)?;
-    db.add_proj(&proj, &tag_ids, &image_paths)
+    db.add_proj(&proj, &tag_ids, &image_ids)
 }
 
 #[tauri::command]
@@ -126,9 +126,9 @@ fn db_search_assets(app: tauri::AppHandle, search: String, tag_ids: Vec<String>,
 }
 
 #[tauri::command]
-fn db_add_asset(app: tauri::AppHandle, asset: database::Asset, tag_ids: Vec<String>, image_paths: Vec<String>) -> Result<String, String> {
+fn db_add_asset(app: tauri::AppHandle, asset: database::Asset, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
     let db = database::Database::new(&app)?;
-    db.add_asset(&asset, &tag_ids, &image_paths)
+    db.add_asset(&asset, &tag_ids, &image_ids)
 }
 
 #[tauri::command]
@@ -170,9 +170,9 @@ fn db_search_tools(app: tauri::AppHandle, search: String, tag_ids: Vec<String>, 
 }
 
 #[tauri::command]
-fn db_add_tool(app: tauri::AppHandle, tool: database::Tool, tag_ids: Vec<String>, image_paths: Vec<String>) -> Result<String, String> {
+fn db_add_tool(app: tauri::AppHandle, tool: database::Tool, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
     let db = database::Database::new(&app)?;
-    db.add_tool(&tool, &tag_ids, &image_paths)
+    db.add_tool(&tool, &tag_ids, &image_ids)
 }
 
 #[tauri::command]
@@ -295,6 +295,12 @@ fn db_load_icon(app: tauri::AppHandle, icon_path: String, base_dir: String, enti
     db.load_entity_icon(&icon_path, &base_dir, &entity_id, entity_type)
 }
 
+#[tauri::command]
+fn db_extract_exe_icon(app: tauri::AppHandle, exe_path: String) -> Result<database::ImageRecord, String> {
+    let db = database::Database::new(&app)?;
+    db.extract_exe_icon(&exe_path)
+}
+
 // ═══════════════════ Settings Commands ═══════════════════
 
 #[tauri::command]
@@ -411,8 +417,13 @@ fn snap_to_edge(app: tauri::AppHandle) -> Result<edge_snap::SnapResult, String> 
 
 // ═══════════════════ Utility Commands ═══════════════════
 
+fn normalize_path(p: &str) -> String {
+    p.replace('\\', "/").trim_matches('"').trim_matches('\'').to_string()
+}
+
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
+    let path = normalize_path(&path);
     if path.is_empty() {
         return Err("path is empty".to_string());
     }
@@ -475,14 +486,24 @@ fn open_folder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 fn launch_app(path: String) -> Result<(), String> {
-    std::process::Command::new(&path)
-        .spawn()
+    let path = normalize_path(&path);
+    let mut cmd = std::process::Command::new(&path);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x00000010); // CREATE_NEW_CONSOLE
+    }
+
+    cmd.spawn()
         .map_err(|e| format!("Failed to launch '{}': {}", path, e))?;
     Ok(())
 }
 
 #[tauri::command]
 fn launch_project(engine_path: String, project_dir: String) -> Result<(), String> {
+    let engine_path = normalize_path(&engine_path);
+    let project_dir = normalize_path(&project_dir);
     std::process::Command::new(&engine_path)
         .arg("-e")
         .arg("--path")
@@ -598,6 +619,7 @@ fn scan_project_file(path: String) -> Result<serde_json::Value, String> {
     let mut version = "".to_string();
     let mut main_version = "".to_string();
     let mut icon_path = "".to_string();
+    let mut real_icon_path = "".to_string();
 
     for line in content.lines() {
         let line = line.trim();
@@ -612,11 +634,23 @@ fn scan_project_file(path: String) -> Result<serde_json::Value, String> {
                     version = v[0].trim().trim_matches('"').to_string();
                 }
             }
-        } else if let Some(_val) = line.strip_prefix("config_version=") {
-            // Godot 3 has config_version=4
+        } else if let Some(val) = line.strip_prefix("config_version=") {
+            let cv: i32 = val.trim().parse().unwrap_or(5);
+            if cv == 4 { main_version = "3".to_string(); version = "3.5".to_string(); }
         } else if let Some(val) = line.strip_prefix("config/icon=\"") {
             icon_path = val.trim_end_matches('"').to_string();
+            if icon_path.starts_with("res://") {
+                real_icon_path = std::path::Path::new(&path).join(&icon_path[6..]).to_string_lossy().to_string();
+            } else if !icon_path.is_empty() {
+                real_icon_path = std::path::Path::new(&path).join(&icon_path).to_string_lossy().to_string();
+            }
         }
+    }
+
+    // Also handle Godot 3 fallback: config_version=4, features don't contain "4."
+    if main_version.is_empty() {
+        main_version = "4".to_string();
+        version = "4.0".to_string();
     }
 
     let mut result = serde_json::Map::new();
@@ -624,6 +658,7 @@ fn scan_project_file(path: String) -> Result<serde_json::Value, String> {
     result.insert("version".into(), serde_json::Value::String(version));
     result.insert("main_version".into(), serde_json::Value::String(main_version));
     result.insert("icon_path".into(), serde_json::Value::String(icon_path));
+    result.insert("real_icon_path".into(), serde_json::Value::String(real_icon_path));
 
     Ok(serde_json::Value::Object(result))
 }
@@ -796,7 +831,7 @@ pub fn run() {
             db_get_diary_detail, db_save_diary_detail, db_query_diary_details, db_query_all_diary_details,
             db_list_tags, db_query_tag_by_name_like, db_insert_tag,
             db_set_fast_tag, db_update_tag_color,
-            db_copy_image_to_cache, db_load_image, db_load_icon,
+            db_copy_image_to_cache, db_load_image, db_load_icon, db_extract_exe_icon,
             get_settings, save_settings,
             set_window_mode, get_window_mode, start_dragging, toggle_panel,
             resize_window, get_screen_work_area, snap_to_edge,

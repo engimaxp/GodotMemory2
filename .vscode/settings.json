@@ -1,4 +1,18 @@
 {
+  "cSpell.words": [
+    "BITMAPINFO",
+    "BITMAPINFOHEADER",
+    "hgdi",
+    "HGDIOBJ",
+    "ICONINFO",
+    "maximizebox",
+    "nonoverlapping",
+    "PCWSTR",
+    "Pels",
+    "projs",
+    "RGBQUAD",
+    "segs"
+  ],
   "files.exclude": {
     "node_modules/": "explorerExcludedFiles",
     "dist/": "explorerExcludedFiles",

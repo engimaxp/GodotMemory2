@@ -4,9 +4,6 @@ import * as bridge from '../bridge';
 import { useOnce } from '../hooks/usePanelManager';
 import { useI18n } from '../i18n';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 function todayStr() {
   const d = new Date();
   const y = d.getFullYear();
@@ -22,6 +19,15 @@ interface MonthGroup {
 
 const DiaryPanel: React.FC = () => {
   const { t } = useI18n();
+  const monthNames = useMemo(() => [
+    t('date.jan'), t('date.feb'), t('date.mar'), t('date.apr'),
+    t('date.may'), t('date.jun'), t('date.jul'), t('date.aug'),
+    t('date.sep'), t('date.oct'), t('date.nov'), t('date.dec'),
+  ], [t]);
+  const dows = useMemo(() => [
+    t('date.sun'), t('date.mon'), t('date.tue'), t('date.wed'),
+    t('date.thu'), t('date.fri'), t('date.sat'),
+  ], [t]);
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [details, setDetails] = useState<DiaryDetail[]>([]);
   const [selectedDiary, setSelectedDiary] = useState<Diary | null>(null);
@@ -55,7 +61,7 @@ const DiaryPanel: React.FC = () => {
         last.details.push(d);
       } else {
         const [y, m] = monthKey.split('-');
-        groups.push({ label: `${MONTHS[parseInt(m) - 1]} ${y}`, details: [d] });
+        groups.push({ label: `${monthNames[parseInt(m) - 1]} ${y}`, details: [d] });
       }
     }
     return groups;
@@ -186,7 +192,7 @@ const DiaryPanel: React.FC = () => {
                     {g.details.map(d => {
                       const dt = new Date(d.create_date);
                       const day = dt.getDate();
-                      const dow = DOW[dt.getDay()];
+                      const dow = dows[dt.getDay()];
                       const isSelected = selectedDetail?.create_date === d.create_date;
                       return (
                         <button

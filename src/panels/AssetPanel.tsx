@@ -1,22 +1,25 @@
 ﻿import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Asset, Tag, EntityWithExtras, Page } from '../types';
+import type { Asset, Tag, ImageRecord, EntityWithExtras, Page } from '../types';
 import { TagType } from '../types';
 import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
 import { useDebounce } from '../hooks/usePanelManager';
 import { useTagSelector } from '../hooks/useTagSelector';
 import { useToast } from '../components/Toast';
+import ScreenshotView from '../components/ScreenshotView';
+import ImageManager from '../components/ImageManager';
 import { open } from '@tauri-apps/plugin-shell';
 import '../styles/panels.css';
 
 interface AssetEditModalProps {
   asset: Partial<Asset> | null;
   initialTagIds?: string[];
+  initialImages?: ImageRecord[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-const AssetEditModal: React.FC<AssetEditModalProps> = ({ asset, initialTagIds, onClose, onSaved }) => {
+const AssetEditModal: React.FC<AssetEditModalProps> = ({ asset, initialTagIds, initialImages, onClose, onSaved }) => {
   const { t } = useI18n();
   const isNew = !asset?.id;
   const [name, setName] = useState(asset?.name ?? "");
@@ -25,6 +28,7 @@ const AssetEditModal: React.FC<AssetEditModalProps> = ({ asset, initialTagIds, o
   const [copyRight, setCopyRight] = useState(asset?.copy_right ?? "");
   const [desc, setDesc] = useState(asset?.desc ?? "");
   const [saving, setSaving] = useState(false);
+  const [imageRecords, setImageRecords] = useState<ImageRecord[]>(initialImages || []);
 
   const {
     tagIds, setTagIds, allTags, fastTags, tagInput, setTagInput,
@@ -36,8 +40,9 @@ const AssetEditModal: React.FC<AssetEditModalProps> = ({ asset, initialTagIds, o
     setSaving(true);
     try {
       const data: Partial<Asset> = { name, directory: dir, link, copy_right: copyRight, desc };
-      if (isNew) await bridge.dbAddAsset(data, tagIds, []);
-      else if (asset?.id) await bridge.dbUpdateAsset({ ...data, id: asset.id } as Asset, tagIds, []);
+      const imageIds = imageRecords.map(r => r.id);
+      if (isNew) await bridge.dbAddAsset(data, tagIds, imageIds);
+      else if (asset?.id) await bridge.dbUpdateAsset({ ...data, id: asset.id } as Asset, tagIds, imageIds);
       onSaved(); onClose();
     } catch (e) { console.error(e); } finally { setSaving(false); }
   };
@@ -92,6 +97,10 @@ const AssetEditModal: React.FC<AssetEditModalProps> = ({ asset, initialTagIds, o
               )}
             </div>
           </div>
+          <div className="form-group">
+            <label className="form-label">{t("common.screenshots")}</label>
+            <ImageManager initialImages={imageRecords} onChange={setImageRecords} />
+          </div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{t("Cancel")}</button>
@@ -104,13 +113,15 @@ const AssetEditModal: React.FC<AssetEditModalProps> = ({ asset, initialTagIds, o
 
 interface AssetRowProps {
   Asset: EntityWithExtras<Asset>;
+  showScreenshots?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onRun: () => void;
   onOpenFolder: () => void;
+  onStarToggle: (star: boolean) => void;
 }
 
-const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onOpenFolder }) => {
+const AssetRow: React.FC<AssetRowProps> = ({ Asset, showScreenshots, onEdit, onDelete, onRun, onOpenFolder, onStarToggle }) => {
   const e = Asset.entity;
   const [iconSrc, setIconSrc] = useState<string | null>(null);
   useEffect(() => {
@@ -119,6 +130,37 @@ const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onO
     }
   }, [Asset.images]);
   const { t } = useI18n();
+  if (showScreenshots) {
+    return (
+      <div className="item-row">
+        <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#6366f1" }}>
+          {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>A</span>}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <ScreenshotView images={Asset.images} />
+        </div>
+        <div className="item-actions">
+          <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
+            {e.star
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
+          </button>
+          {e.link && <button className="item-btn" onClick={onRun} title={t("asset.open_link")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+          </button>}
+          <button className="item-btn" onClick={onOpenFolder} title={t("asset.open_folder")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+          </button>
+          <button className="item-btn" onClick={onEdit} title={t("common.edit")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+          </button>
+          <button className="item-btn danger" onClick={onDelete} title={t("Delete")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="item-row">
       <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#6366f1" }}>
@@ -130,6 +172,11 @@ const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onO
       </div>
       <div className="item-tags">{Asset.tags.slice(0, 3).map(t => <span key={t.id} className="tag-chip" style={{ background: "#" + t.color + "22", color: "#" + t.color }}>{t.name}</span>)}</div>
       <div className="item-actions">
+        <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
+          {e.star
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
+        </button>
         {e.link && <button className="item-btn" onClick={onRun} title={t("asset.open_link")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
         </button>}
@@ -156,9 +203,11 @@ const AssetPanel: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState<Page>({ index: 1, size: 30 });
   const [editItemTags, setEditItemTags] = useState<string[]>([]);
+  const [editItemImages, setEditItemImages] = useState<ImageRecord[]>([]);
   const [editAsset, setEditAsset] = useState<Partial<Asset> | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showScreenshots, setShowScreenshots] = useState(false);
   // Tag search filtering
   const [searchTagIds, setSearchTagIds] = useState<string[]>([]);
   const [allSearchTags, setAllSearchTags] = useState<Tag[]>([]);
@@ -236,51 +285,60 @@ const AssetPanel: React.FC = () => {
             onChange={e => { setSearch(e.target.value); setPage(p => ({ ...p, index: 1 })); }}
             placeholder={t("search.placeholder")} />
           <span className="panel-count">({Assets.length}/{totalCount})</span>
-          <button className="btn btn-primary btn-small" onClick={() => { setEditAsset(null); setShowEdit(true); }}>+ {t("Add")}</button>
+          <button className="btn btn-primary btn-small" onClick={() => { setEditAsset(null); setEditItemTags([]); setEditItemImages([]); setShowEdit(true); }}>+ {t("Add")}</button>
         </div>
-        {/* Tag filter bar */}
-        {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
-          <div className="flex flex-wrap gap-1">
-            {allSearchTags.filter(t => t.is_fast || searchTagIds.includes(t.id)).slice(0, 15).map(tag => (
-              <span key={tag.id}
-                className="tag-chip cursor-pointer"
-                style={{
-                  background: searchTagIds.includes(tag.id) ? "#" + tag.color + "44" : "#" + tag.color + "22",
-                  color: "#" + tag.color,
-                  border: "1px solid #" + tag.color + (searchTagIds.includes(tag.id) ? "88" : "44"),
-                }}
-                onClick={() => {
-                  setSearchTagIds(prev =>
-                    prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
-                  );
-                  setPage(p => ({ ...p, index: 1 }));
-                }}
-              >{tag.name}</span>
-            ))}
-            <div ref={tagSearchRef} style={{ position: "relative", display: "inline-flex" }}>
-              <input className="tag-input" value={tagSearchText}
-                onChange={e => setTagSearchText(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
-                placeholder={t("asset.placeholder_search_tags")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
-              {showTagSuggestions && tagSuggestions.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
-                  {tagSuggestions.map(tag => (
-                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
-                      onClick={() => addSearchTag(tag.name)}>
-                      {tag.name}
-                    </div>
-                  ))}
-                </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
+            <div className="flex flex-wrap gap-1" style={{ flex: 1 }}>
+              {allSearchTags.filter(t => t.is_fast || searchTagIds.includes(t.id)).slice(0, 15).map(tag => (
+                <span key={tag.id}
+                  className="tag-chip cursor-pointer"
+                  style={{
+                    background: searchTagIds.includes(tag.id) ? "#" + tag.color + "44" : "#" + tag.color + "22",
+                    color: "#" + tag.color,
+                    border: "1px solid #" + tag.color + (searchTagIds.includes(tag.id) ? "88" : "44"),
+                  }}
+                  onClick={() => {
+                    setSearchTagIds(prev =>
+                      prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
+                    );
+                    setPage(p => ({ ...p, index: 1 }));
+                  }}
+                >{tag.name}</span>
+              ))}
+              <div ref={tagSearchRef} style={{ position: "relative", display: "inline-flex" }}>
+                <input className="tag-input" value={tagSearchText}
+                  onChange={e => setTagSearchText(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
+                  placeholder={t("asset.placeholder_search_tags")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
+                {showTagSuggestions && tagSuggestions.length > 0 && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
+                    {tagSuggestions.map(tag => (
+                      <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
+                        onClick={() => addSearchTag(tag.name)}>
+                        {tag.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {searchTagIds.length > 0 && (
+                <span className="tag-chip" style={{ background: "var(--bg-secondary)", color: "var(--ink-faint)", cursor: "pointer", border: "1px solid var(--border-color)" }}
+                  onClick={() => { setSearchTagIds([]); setPage(p => ({ ...p, index: 1 })); }}>
+                  {t("asset.filter_clear")}
+                </span>
               )}
             </div>
-            {searchTagIds.length > 0 && (
-              <span className="tag-chip" style={{ background: "var(--bg-secondary)", color: "var(--ink-faint)", cursor: "pointer", border: "1px solid var(--border-color)" }}
-                onClick={() => { setSearchTagIds([]); setPage(p => ({ ...p, index: 1 })); }}>
-                {t("asset.filter_clear")}
-              </span>
-            )}
-          </div>
-        )}
+          )}
+          <button className={"screenshot-toggle-btn" + (showScreenshots ? " active" : "")}
+            onClick={() => setShowScreenshots(prev => !prev)}
+            title={showScreenshots ? t("asset.switch_to_text") : t("asset.switch_to_screenshot")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="panel-list">
@@ -292,10 +350,12 @@ const AssetPanel: React.FC = () => {
         )}
         {Assets.map(e => (
           <AssetRow key={e.entity.id} Asset={e}
-            onEdit={() => { setEditAsset(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
+            showScreenshots={showScreenshots}
+            onEdit={() => { setEditAsset(e.entity); setEditItemTags(e.tags.map(t => t.id)); setEditItemImages(e.images || []); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteAsset(e.entity.id); load(); } catch {} }}
             onRun={() => { const link = e.entity.link; if (link) open(link).catch(() => {}); }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }}
+            onStarToggle={async (star) => { try { await bridge.dbToggleAssetStar(e.entity.id, star); load(); } catch {}}} />
         ))}
       </div>
 
@@ -314,7 +374,7 @@ const AssetPanel: React.FC = () => {
       )}
 
       {showEdit && (
-        <AssetEditModal asset={editAsset} initialTagIds={editItemTags} onClose={() => setShowEdit(false)} onSaved={() => load().finally(() => setLoading(false))} />
+        <AssetEditModal asset={editAsset} initialTagIds={editItemTags} initialImages={editItemImages} onClose={() => setShowEdit(false)} onSaved={() => load().finally(() => setLoading(false))} />
       )}
     </div>
   );

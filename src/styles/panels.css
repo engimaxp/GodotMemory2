@@ -77,3 +77,80 @@
 .tag-input-area { display: flex; gap: 4px; align-items: center; }
 .tag-input { padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--ink-strong); font-size: 12px; outline: none; width: 140px; }
 .tag-input:focus { border-color: var(--accent-blue); }
+
+.screenshot-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+  align-items: center;
+  min-height: 48px;
+  scrollbar-width: thin;
+}
+.screenshot-thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  transition: border-color 150ms ease;
+}
+.screenshot-thumb:hover {
+  border-color: var(--accent-blue);
+}
+.screenshot-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.screenshot-zoom {
+  position: fixed;
+  z-index: 10000;
+  background: var(--bg-popup);
+  border: 2px solid var(--accent-blue);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  overflow: hidden;
+  pointer-events: none;
+}
+.screenshot-zoom img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.screenshot-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+.screenshot-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--ink-strong);
+  border-color: var(--accent-blue);
+}
+.screenshot-toggle-btn.active {
+  background: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.image-manager { display: flex; flex-direction: column; gap: 8px; }
+.image-manager-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.image-manager-item { position: relative; width: 72px; height: 48px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); flex-shrink: 0; }
+.image-manager-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.image-manager-remove { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; cursor: pointer; display: none; align-items: center; justify-content: center; padding: 4px; }
+.image-manager-item:hover .image-manager-remove { display: flex; }
+.image-manager-remove:hover { background: rgba(239,68,68,0.8); }

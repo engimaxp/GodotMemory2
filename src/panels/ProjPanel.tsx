@@ -1,21 +1,28 @@
 ﻿import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Proj, Engine, Tag, EntityWithExtras, Page } from '../types';
+import type { Proj, Engine, Tag, ImageRecord, EntityWithExtras, Page } from '../types';
 import { TagType } from '../types';
 import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
 import { useDebounce } from '../hooks/usePanelManager';
 import { useTagSelector } from '../hooks/useTagSelector';
 import { useToast } from '../components/Toast';
+import ScreenshotView from '../components/ScreenshotView';
+import ImageManager from '../components/ImageManager';
 import '../styles/panels.css';
 
 interface ProjEditModalProps {
   proj: Partial<Proj> | null;
   initialTagIds?: string[];
+  initialImages?: ImageRecord[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onClose, onSaved }) => {
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^["']|["']$/g, '');
+}
+
+const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, initialImages, onClose, onSaved }) => {
   const { t } = useI18n();
   const isNew = !proj?.id;
   const [name, setName] = useState(proj?.name ?? "");
@@ -26,8 +33,45 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
   const [desc, setDesc] = useState(proj?.desc ?? "");
   const [saving, setSaving] = useState(false);
   const [engines, setEngines] = useState<EntityWithExtras<Engine>[]>([]);
+  const [imageRecords, setImageRecords] = useState<ImageRecord[]>(initialImages || []);
+  const [iconId, setIconId] = useState<string | null>(proj?.icon ?? null);
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (proj?.icon) {
+      bridge.dbLoadImage(proj.icon).then(setIconSrc).catch(() => setIconSrc(null));
+    }
+  }, [proj?.icon]);
+
+  const dirTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { bridge.dbListAllEngines().then(setEngines).catch(() => {}); }, []);
+
+  const handleDirChange = (value: string) => {
+    const normalized = normalizePath(value);
+    setDir(normalized);
+    if (dirTimerRef.current) clearTimeout(dirTimerRef.current);
+    dirTimerRef.current = setTimeout(async () => {
+      if (!normalized.trim()) return;
+      try {
+        const info = await bridge.scanProjectFile(normalized.trim());
+        if (info) {
+          if (info.name && !proj?.id) setName(info.name);
+          if (info.main_version) setMainVersion(info.main_version);
+          if (info.version) setVersion(info.version);
+          if (info.real_icon_path) {
+            try {
+              const record = await bridge.dbCopyImageToCache(info.real_icon_path);
+              setIconId(record.id);
+              const b64 = await bridge.dbLoadImage(record.id);
+              if (b64) setIconSrc(b64);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch { /* ignore */ }
+    }, 600);
+  };
+
+  useEffect(() => () => { if (dirTimerRef.current) clearTimeout(dirTimerRef.current); }, []);
 
   const {
     tagIds, setTagIds, allTags, fastTags, tagInput, setTagInput,
@@ -38,9 +82,10 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data: Partial<Proj> = { version, directory: dir, name, main_version: parseInt(mainVersion) || 4, engine_id: engineId, desc };
-      if (isNew) await bridge.dbAddProj(data, tagIds, []);
-      else if (proj?.id) await bridge.dbUpdateProj({ ...data, id: proj.id } as Proj, tagIds, []);
+      const data: Partial<Proj> = { version, directory: dir, name, main_version: parseInt(mainVersion) || 4, engine_id: engineId, desc, icon: iconId ?? proj?.icon ?? '' };
+      const imageIds = imageRecords.map(r => r.id);
+      if (isNew) await bridge.dbAddProj(data, tagIds, imageIds);
+      else if (proj?.id) await bridge.dbUpdateProj({ ...data, id: proj.id } as Proj, tagIds, imageIds);
       onSaved(); onClose();
     } catch (e) { console.error(e); } finally { setSaving(false); }
   };
@@ -49,6 +94,10 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <div className="modal-header">
+          {iconSrc && <img src={iconSrc} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "contain" }} />}
+          {!iconSrc && <div className="item-icon" style={{ width: 28, height: 28, borderRadius: 4, background: ((parseInt(mainVersion) || 4) === 3 ? "#478bfb" : "#6d28d9"), display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "white", fontSize: 10, fontWeight: 600 }}>{(parseInt(mainVersion) || 4) === 3 ? "G3" : "G4"}</span>
+          </div>}
           <span className="modal-title">{isNew ? t("proj.add") : t("proj.edit")}</span>
           <button className="modal-close" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -56,7 +105,7 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
         </div>
         <div className="modal-body">
           <div className="form-group"><label className="form-label">{t("proj.name")}</label><input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t("proj.name_placeholder")} /></div>
-          <div className="form-group"><label className="form-label">{t("proj.directory")}</label><input className="form-input" value={dir} onChange={e => setDir(e.target.value)} placeholder={t("proj.dir_placeholder")} /></div>
+          <div className="form-group"><label className="form-label">{t("proj.directory")}</label><input className="form-input" value={dir} onChange={e => handleDirChange(e.target.value)} placeholder={t("proj.dir_placeholder")} /></div>
           <div className="form-row">
             <div className="form-group"><label className="form-label">{t("engine.main_version")}</label><input className="form-input" value={mainVersion} onChange={e => setMainVersion(e.target.value)} placeholder={t("proj.main_version_placeholder")} /></div>
             <div className="form-group"><label className="form-label">{t("engine.version")}</label><input className="form-input" value={version} onChange={e => setVersion(e.target.value)} placeholder={t("proj.version_placeholder")} /></div>
@@ -105,6 +154,10 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
               )}
             </div>
           </div>
+          <div className="form-group">
+            <label className="form-label">{t("common.screenshots")}</label>
+            <ImageManager initialImages={imageRecords} onChange={setImageRecords} />
+          </div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{t("Cancel")}</button>
@@ -118,13 +171,15 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
 interface ProjRowProps {
   Proj: EntityWithExtras<Proj>;
   engineName?: string;
+  showScreenshots?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onRun: () => void;
   onOpenFolder: () => void;
+  onStarToggle: (star: boolean) => void;
 }
 
-const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, onRun, onOpenFolder }) => {
+const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, showScreenshots, onEdit, onDelete, onRun, onOpenFolder, onStarToggle }) => {
   const { t } = useI18n();
   const e = Proj.entity;
   const [iconSrc, setIconSrc] = useState<string | null>(null);
@@ -133,6 +188,37 @@ const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, o
       bridge.dbLoadImage(e.icon).then(setIconSrc).catch(() => setIconSrc(null));
     }
   }, [e.icon]);
+  if (showScreenshots) {
+    return (
+      <div className="item-row">
+        <div className="item-icon" style={{ background: iconSrc ? "transparent" : (e.main_version === 3 ? "#478bfb" : "#6d28d9") }}>
+          {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <ScreenshotView images={Proj.images} />
+        </div>
+        <div className="item-actions">
+          <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
+            {e.star
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
+          </button>
+          <button className="item-btn" onClick={onRun} title={t("common.run")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+          </button>
+          <button className="item-btn" onClick={onOpenFolder} title={t("common.open_dir")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+          </button>
+          <button className="item-btn" onClick={onEdit} title={t("common.edit")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+          </button>
+          <button className="item-btn danger" onClick={onDelete} title={t("Delete")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="item-row">
       <div className="item-icon" style={{ background: iconSrc ? "transparent" : (e.main_version === 3 ? "#478bfb" : "#6d28d9") }}>
@@ -145,6 +231,11 @@ const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, o
       </div>
       <div className="item-tags">{Proj.tags.slice(0, 3).map(t => <span key={t.id} className="tag-chip" style={{ background: "#" + t.color + "22", color: "#" + t.color }}>{t.name}</span>)}</div>
       <div className="item-actions">
+        <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
+          {e.star
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
+        </button>
         <button className="item-btn" onClick={onRun} title={t("common.run")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
         </button>
@@ -172,8 +263,10 @@ const ProjPanel: React.FC = () => {
   const [page, setPage] = useState<Page>({ index: 1, size: 30 });
   const [editItem, setEditItem] = useState<Partial<Proj> | null>(null);
   const [editItemTags, setEditItemTags] = useState<string[]>([]);
+  const [editItemImages, setEditItemImages] = useState<ImageRecord[]>([]);
   const [showEdit, setShowEdit] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showScreenshots, setShowScreenshots] = useState(false);
   // Tag search filtering
   const [searchTagIds, setSearchTagIds] = useState<string[]>([]);
   const [allSearchTags, setAllSearchTags] = useState<Tag[]>([]);
@@ -260,51 +353,60 @@ const ProjPanel: React.FC = () => {
             onChange={e => { setSearch(e.target.value); setPage(p => ({ ...p, index: 1 })); }}
             placeholder={t("search.placeholder")} />
           <span className="panel-count">({items.length}/{totalCount})</span>
-          <button className="btn btn-primary btn-small" onClick={() => { setEditItem(null); setShowEdit(true); }}>+ {t("proj.add")}</button>
+          <button className="btn btn-primary btn-small" onClick={() => { setEditItem(null); setEditItemTags([]); setEditItemImages([]); setShowEdit(true); }}>+ {t("proj.add")}</button>
         </div>
-        {/* Tag filter bar */}
-        {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
-          <div className="flex flex-wrap gap-1">
-            {allSearchTags.filter(t => t.is_fast || searchTagIds.includes(t.id)).slice(0, 15).map(tag => (
-              <span key={tag.id}
-                className="tag-chip cursor-pointer"
-                style={{
-                  background: searchTagIds.includes(tag.id) ? "#" + tag.color + "44" : "#" + tag.color + "22",
-                  color: "#" + tag.color,
-                  border: "1px solid #" + tag.color + (searchTagIds.includes(tag.id) ? "88" : "44"),
-                }}
-                onClick={() => {
-                  setSearchTagIds(prev =>
-                    prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
-                  );
-                  setPage(p => ({ ...p, index: 1 }));
-                }}
-              >{tag.name}</span>
-            ))}
-            <div ref={tagSearchRef} style={{ position: "relative", display: "inline-flex" }}>
-              <input className="tag-input" value={tagSearchText}
-                onChange={e => setTagSearchText(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
-                placeholder={t("proj.search_tags_placeholder")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
-              {showTagSuggestions && tagSuggestions.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
-                  {tagSuggestions.map(tag => (
-                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
-                      onClick={() => addSearchTag(tag.name)}>
-                      {tag.name}
-                    </div>
-                  ))}
-                </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {(allSearchTags.length > 0 || searchTagIds.length > 0) && (
+            <div className="flex flex-wrap gap-1" style={{ flex: 1 }}>
+              {allSearchTags.filter(t => t.is_fast || searchTagIds.includes(t.id)).slice(0, 15).map(tag => (
+                <span key={tag.id}
+                  className="tag-chip cursor-pointer"
+                  style={{
+                    background: searchTagIds.includes(tag.id) ? "#" + tag.color + "44" : "#" + tag.color + "22",
+                    color: "#" + tag.color,
+                    border: "1px solid #" + tag.color + (searchTagIds.includes(tag.id) ? "88" : "44"),
+                  }}
+                  onClick={() => {
+                    setSearchTagIds(prev =>
+                      prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
+                    );
+                    setPage(p => ({ ...p, index: 1 }));
+                  }}
+                >{tag.name}</span>
+              ))}
+              <div ref={tagSearchRef} style={{ position: "relative", display: "inline-flex" }}>
+                <input className="tag-input" value={tagSearchText}
+                  onChange={e => setTagSearchText(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
+                  placeholder={t("proj.search_tags_placeholder")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
+                {showTagSuggestions && tagSuggestions.length > 0 && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
+                    {tagSuggestions.map(tag => (
+                      <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
+                        onClick={() => addSearchTag(tag.name)}>
+                        {tag.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {searchTagIds.length > 0 && (
+                <span className="tag-chip" style={{ background: "var(--bg-secondary)", color: "var(--ink-faint)", cursor: "pointer", border: "1px solid var(--border-color)" }}
+                  onClick={() => { setSearchTagIds([]); setPage(p => ({ ...p, index: 1 })); }}>
+                  x {t("search.clear")}
+                </span>
               )}
             </div>
-            {searchTagIds.length > 0 && (
-              <span className="tag-chip" style={{ background: "var(--bg-secondary)", color: "var(--ink-faint)", cursor: "pointer", border: "1px solid var(--border-color)" }}
-                onClick={() => { setSearchTagIds([]); setPage(p => ({ ...p, index: 1 })); }}>
-                x {t("search.clear")}
-              </span>
-            )}
-          </div>
-        )}
+          )}
+          <button className={"screenshot-toggle-btn" + (showScreenshots ? " active" : "")}
+            onClick={() => setShowScreenshots(prev => !prev)}
+            title={showScreenshots ? t("proj.switch_to_text") : t("proj.switch_to_screenshot")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="panel-list">
@@ -317,8 +419,10 @@ const ProjPanel: React.FC = () => {
         {items.map(e => (
           <ProjRow key={e.entity.id} Proj={e}
             engineName={engineMap[e.entity.engine_id]?.name}
-            onEdit={() => { setEditItem(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
+            showScreenshots={showScreenshots}
+            onEdit={() => { setEditItem(e.entity); setEditItemTags(e.tags.map(t => t.id)); setEditItemImages(e.images || []); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteProj(e.entity.id); load(); } catch {} }}
+            onStarToggle={async (star) => { try { await bridge.dbToggleProjStar(e.entity.id, star); load(); } catch {} }}
             onRun={() => {
               const engine = engineMap[e.entity.engine_id];
               if (engine) {
@@ -361,7 +465,7 @@ const ProjPanel: React.FC = () => {
       )}
 
       {showEdit && (
-        <ProjEditModal proj={editItem} initialTagIds={editItemTags} onClose={() => setShowEdit(false)} onSaved={() => load().finally(() => setLoading(false))} />
+        <ProjEditModal proj={editItem} initialTagIds={editItemTags} initialImages={editItemImages} onClose={() => setShowEdit(false)} onSaved={() => load().finally(() => setLoading(false))} />
       )}
     </div>
   );

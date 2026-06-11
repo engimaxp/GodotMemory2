@@ -92,7 +92,7 @@ describe('Asset Module', () => {
     await dbAddAsset({ name: 'Texture Pack', copy_right: 'CC0' }, [], []);
     expect(invoke).toHaveBeenCalledWith('db_add_asset', {
       asset: { name: 'Texture Pack', copy_right: 'CC0' },
-      tagIds: [], imagePaths: [],
+      tagIds: [], imageIds: [],
     });
   });
 
@@ -120,7 +120,7 @@ describe('Tool Module', () => {
     await dbAddTool({ name: 'Blender', directory: 'C:/blender.exe' }, ['tag-1'], []);
     expect(invoke).toHaveBeenCalledWith('db_add_tool', {
       tool: { name: 'Blender', directory: 'C:/blender.exe' },
-      tagIds: ['tag-1'], imagePaths: [],
+      tagIds: ['tag-1'], imageIds: [],
     });
   });
 });

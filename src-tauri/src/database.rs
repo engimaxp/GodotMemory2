@@ -6,9 +6,14 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
 
+fn normalize_path(p: &str) -> String {
+    p.replace('\\', "/").trim_matches('"').trim_matches('\'').to_string()
+}
+
 // ─── Data Structures ───
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Engine {
     pub id: String,
     pub version: String,
@@ -25,7 +30,8 @@ pub struct Engine {
     pub is_delete: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Proj {
     pub id: String,
     pub version: String,
@@ -40,7 +46,8 @@ pub struct Proj {
     pub star: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Asset {
     pub id: String,
     pub directory: String,
@@ -53,7 +60,8 @@ pub struct Asset {
     pub star: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Tool {
     pub id: String,
     pub directory: String,
@@ -67,6 +75,7 @@ pub struct Tool {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Diary {
     pub id: String,
     pub name: String,
@@ -76,12 +85,37 @@ pub struct Diary {
     pub is_delete: bool,
 }
 
+impl Default for Diary {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            desc: String::new(),
+            proj_id: String::new(),
+            sort: 0,
+            is_delete: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct DiaryDetail {
     pub id: String,
     pub create_date: String,
     pub diary_id: String,
     pub content: String,
+}
+
+impl Default for DiaryDetail {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            create_date: String::new(),
+            diary_id: String::new(),
+            content: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -220,11 +254,13 @@ impl Database {
     pub fn add_engine(&self, engine: &Engine, tag_ids: &[String]) -> Result<String, String> {
         let id = uuid::Uuid::new_v4().to_string();
         let sort = self.next_sort("Engine")?;
+        let dir = normalize_path(&engine.directory);
+        let console_dir = normalize_path(&engine.console_dir);
         self.conn.execute(
             "INSERT INTO Engine (Id,Version,Directory,IsEnc,EncKey,HasConsole,ConsoleDir,Name,IsDefault,MainVersion,\"Desc\",Sort)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
-            params![id, engine.version, engine.directory, engine.is_enc as i32, engine.enc_key,
-                    engine.has_console as i32, engine.console_dir, engine.name,
+            params![id, engine.version, dir, engine.is_enc as i32, engine.enc_key,
+                    engine.has_console as i32, console_dir, engine.name,
                     engine.is_default as i32, engine.main_version, engine.desc, sort],
         ).map_err(|e| e.to_string())?;
         self.add_tag_relations(&tag_ids, &id, 0)?;
@@ -232,11 +268,13 @@ impl Database {
     }
 
     pub fn update_engine(&self, engine: &Engine, tag_ids: &[String]) -> Result<(), String> {
+        let dir = normalize_path(&engine.directory);
+        let console_dir = normalize_path(&engine.console_dir);
         self.conn.execute(
             "UPDATE Engine SET Version=?1, Directory=?2, IsEnc=?3, EncKey=?4, HasConsole=?5,
              ConsoleDir=?6, Name=?7, IsDefault=?8, MainVersion=?9, \"Desc\"=?10 WHERE Id=?11",
-            params![engine.version, engine.directory, engine.is_enc as i32, engine.enc_key,
-                    engine.has_console as i32, engine.console_dir, engine.name,
+            params![engine.version, dir, engine.is_enc as i32, engine.enc_key,
+                    engine.has_console as i32, console_dir, engine.name,
                     engine.is_default as i32, engine.main_version, engine.desc, engine.id],
         ).map_err(|e| e.to_string())?;
         self.replace_tag_relations(&tag_ids, &engine.id, 0)?;
@@ -312,7 +350,7 @@ impl Database {
 
     // ═══════════════════ Proj CRUD ═══════════════════
 
-    pub fn add_proj(&self, proj: &Proj, tag_ids: &[String], image_paths: &[String]) -> Result<String, String> {
+    pub fn add_proj(&self, proj: &Proj, tag_ids: &[String], image_ids: &[String]) -> Result<String, String> {
         let id = uuid::Uuid::new_v4().to_string();
         let sort = self.next_sort("Proj")?;
         self.conn.execute(
@@ -322,19 +360,17 @@ impl Database {
                     proj.desc, sort, proj.engine_id, proj.icon, proj.star as i32],
         ).map_err(|e| e.to_string())?;
         self.add_tag_relations(&tag_ids, &id, 1)?;
-        for p in image_paths {
-            if let Ok(img) = self.copy_to_cache(p) {
-                self.add_image_relation(&img.id, &id, 1)?;
-            }
+        for iid in image_ids {
+            self.add_image_relation(iid, &id, 1)?;
         }
         Ok(id)
     }
 
     pub fn update_proj(&self, proj: &Proj, tag_ids: &[String], image_ids: &[String]) -> Result<(), String> {
         self.conn.execute(
-            "UPDATE Proj SET Version=?1,Directory=?2,Name=?3,MainVersion=?4,\"Desc\"=?5,EngineId=?6,Icon=?7,Star=?8 WHERE Id=?9",
+            "UPDATE Proj SET Version=?1,Directory=?2,Name=?3,MainVersion=?4,\"Desc\"=?5,EngineId=?6,Icon=?7 WHERE Id=?8",
             params![proj.version, proj.directory, proj.name, proj.main_version, proj.desc,
-                    proj.engine_id, proj.icon, proj.star as i32, proj.id],
+                    proj.engine_id, proj.icon, proj.id],
         ).map_err(|e| e.to_string())?;
         self.replace_tag_relations(&tag_ids, &proj.id, 1)?;
         self.replace_image_relations(&proj.id, 1, &image_ids)?;
@@ -483,7 +519,7 @@ impl Database {
 
     // ═══════════════════ Asset CRUD ═══════════════════
 
-    pub fn add_asset(&self, asset: &Asset, tag_ids: &[String], image_paths: &[String]) -> Result<String, String> {
+    pub fn add_asset(&self, asset: &Asset, tag_ids: &[String], image_ids: &[String]) -> Result<String, String> {
         let id = uuid::Uuid::new_v4().to_string();
         let sort = self.next_sort("Asset")?;
         self.conn.execute(
@@ -491,18 +527,16 @@ impl Database {
             params![id, asset.directory, asset.name, asset.copy_right, asset.link, asset.desc, sort, asset.star as i32],
         ).map_err(|e| e.to_string())?;
         self.add_tag_relations(&tag_ids, &id, 2)?;
-        for p in image_paths {
-            if let Ok(img) = self.copy_to_cache(p) {
-                self.add_image_relation(&img.id, &id, 2)?;
-            }
+        for iid in image_ids {
+            self.add_image_relation(iid, &id, 2)?;
         }
         Ok(id)
     }
 
     pub fn update_asset(&self, asset: &Asset, tag_ids: &[String], image_ids: &[String]) -> Result<(), String> {
         self.conn.execute(
-            "UPDATE Asset SET Directory=?1,Name=?2,CopyRight=?3,Link=?4,\"Desc\"=?5,Star=?6 WHERE Id=?7",
-            params![asset.directory, asset.name, asset.copy_right, asset.link, asset.desc, asset.star as i32, asset.id],
+            "UPDATE Asset SET Directory=?1,Name=?2,CopyRight=?3,Link=?4,\"Desc\"=?5 WHERE Id=?6",
+            params![asset.directory, asset.name, asset.copy_right, asset.link, asset.desc, asset.id],
         ).map_err(|e| e.to_string())?;
         self.replace_tag_relations(&tag_ids, &asset.id, 2)?;
         self.replace_image_relations(&asset.id, 2, &image_ids)?;
@@ -575,26 +609,26 @@ impl Database {
 
     // ═══════════════════ Tool CRUD ═══════════════════
 
-    pub fn add_tool(&self, tool: &Tool, tag_ids: &[String], image_paths: &[String]) -> Result<String, String> {
+    pub fn add_tool(&self, tool: &Tool, tag_ids: &[String], image_ids: &[String]) -> Result<String, String> {
         let id = uuid::Uuid::new_v4().to_string();
         let sort = self.next_sort("Tool")?;
+        let dir = normalize_path(&tool.directory);
         self.conn.execute(
             "INSERT INTO Tool (Id,Directory,Link,Name,\"Desc\",Sort,IsDelete,Icon,Star) VALUES (?1,?2,?3,?4,?5,?6,0,?7,?8)",
-            params![id, tool.directory, tool.link, tool.name, tool.desc, sort, tool.icon, tool.star as i32],
+            params![id, dir, tool.link, tool.name, tool.desc, sort, tool.icon, tool.star as i32],
         ).map_err(|e| e.to_string())?;
         self.add_tag_relations(&tag_ids, &id, 3)?;
-        for p in image_paths {
-            if let Ok(img) = self.copy_to_cache(p) {
-                self.add_image_relation(&img.id, &id, 3)?;
-            }
+        for iid in image_ids {
+            self.add_image_relation(iid, &id, 3)?;
         }
         Ok(id)
     }
 
     pub fn update_tool(&self, tool: &Tool, tag_ids: &[String], image_ids: &[String]) -> Result<(), String> {
+        let dir = normalize_path(&tool.directory);
         self.conn.execute(
-            "UPDATE Tool SET Directory=?1,Link=?2,Name=?3,\"Desc\"=?4,Icon=?5,Star=?6 WHERE Id=?7",
-            params![tool.directory, tool.link, tool.name, tool.desc, tool.icon, tool.star as i32, tool.id],
+            "UPDATE Tool SET Directory=?1,Link=?2,Name=?3,\"Desc\"=?4,Icon=?5 WHERE Id=?6",
+            params![dir, tool.link, tool.name, tool.desc, tool.icon, tool.id],
         ).map_err(|e| e.to_string())?;
         self.replace_tag_relations(&tag_ids, &tool.id, 3)?;
         self.replace_image_relations(&tool.id, 3, &image_ids)?;
@@ -889,6 +923,158 @@ impl Database {
         }
 
         Ok(None)
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn extract_exe_icon(&self, exe_path: &str) -> Result<ImageRecord, String> {
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use windows::Win32::UI::Shell::ExtractIconExW;
+        use windows::Win32::UI::WindowsAndMessaging::DestroyIcon;
+
+        if !std::path::Path::new(exe_path).exists() {
+            return Err("Executable not found".to_string());
+        }
+
+        let path_wide: Vec<u16> = OsStr::new(exe_path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+
+        let mut hicon = windows::Win32::UI::WindowsAndMessaging::HICON::default();
+        let count = unsafe {
+            ExtractIconExW(
+                windows::core::PCWSTR::from_raw(path_wide.as_ptr()),
+                0,
+                Some(&mut hicon),
+                None,
+                1,
+            )
+        };
+
+        if count == 0 || hicon.is_invalid() {
+            return Err("No icons found in executable".to_string());
+        }
+
+        let result = self.icon_to_image_record(hicon, exe_path);
+        unsafe { let _ = DestroyIcon(hicon); }
+        result
+    }
+
+    #[cfg(target_os = "windows")]
+    fn icon_to_image_record(&self, hicon: windows::Win32::UI::WindowsAndMessaging::HICON, exe_path: &str) -> Result<ImageRecord, String> {
+        use windows::Win32::Foundation::{HANDLE, HWND};
+        use windows::Win32::Graphics::Gdi::*;
+        use windows::Win32::UI::WindowsAndMessaging::*;
+
+        let screen_dc = unsafe { GetDC(HWND::default()) };
+
+        let mut icon_info = ICONINFO::default();
+        unsafe { GetIconInfo(hicon, &mut icon_info) }.map_err(|e| e.to_string())?;
+
+        let mut bitmap = BITMAP::default();
+        let bitmap_ptr = &mut bitmap as *mut BITMAP as *mut core::ffi::c_void;
+        let hgdi_color = HGDIOBJ(icon_info.hbmColor.0);
+        let obj_result = unsafe {
+            GetObjectW(hgdi_color, std::mem::size_of::<BITMAP>() as i32, Some(bitmap_ptr))
+        };
+
+        if obj_result == 0 {
+            unsafe {
+                let _ = ReleaseDC(HWND::default(), screen_dc);
+                let _ = DeleteObject(icon_info.hbmColor);
+                let _ = DeleteObject(icon_info.hbmMask);
+            }
+            return Err("Failed to get bitmap info".to_string());
+        }
+
+        let width = bitmap.bmWidth;
+        let height = bitmap.bmHeight;
+
+        let mem_dc = unsafe { CreateCompatibleDC(screen_dc) };
+
+        let bmi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: width,
+                biHeight: -height,
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            },
+            bmiColors: [RGBQUAD::default(); 1],
+        };
+
+        let mut pixels_ptr: *mut core::ffi::c_void = std::ptr::null_mut();
+        let dib = unsafe {
+            CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &mut pixels_ptr, HANDLE::default(), 0)
+        }.map_err(|e| e.to_string())?;
+
+        let old = unsafe { SelectObject(mem_dc, HGDIOBJ(dib.0)) };
+
+        unsafe { DrawIconEx(mem_dc, 0, 0, hicon, width, height, 0, None, DI_NORMAL) }
+            .map_err(|e| e.to_string())?;
+
+        let pixel_count = (width * height) as usize;
+        let mut pixels = vec![0u8; pixel_count * 4];
+        unsafe {
+            std::ptr::copy_nonoverlapping(pixels_ptr as *const u8, pixels.as_mut_ptr(), pixel_count * 4);
+        }
+
+        unsafe {
+            let _ = SelectObject(mem_dc, old);
+            let _ = DeleteObject(dib);
+            let _ = DeleteDC(mem_dc);
+            let _ = ReleaseDC(HWND::default(), screen_dc);
+            let _ = DeleteObject(icon_info.hbmColor);
+            let _ = DeleteObject(icon_info.hbmMask);
+        }
+
+        for chunk in pixels.chunks_mut(4) {
+            let b = chunk[0];
+            chunk[0] = chunk[2];
+            chunk[2] = b;
+        }
+
+        let hash = Md5::digest(&pixels);
+        let cached_name = format!("{:x}.png", hash);
+        let cached_path = self.cache_dir.join(&cached_name);
+
+        if !cached_path.exists() {
+            let file = std::fs::File::create(&cached_path).map_err(|e| e.to_string())?;
+            #[allow(deprecated)]
+            image::codecs::png::PngEncoder::new(file)
+                .encode(&pixels, width as u32, height as u32, image::ColorType::Rgba8)
+                .map_err(|e| e.to_string())?;
+        }
+
+        let id = uuid::Uuid::new_v4().to_string();
+        let new_path = cached_path.to_string_lossy().to_string();
+        self.conn
+            .execute(
+                "INSERT INTO Images (Id,Width,Height,Format,Path,NewPath) VALUES (?1,?2,?3,?4,?5,?6)",
+                params![id, width as i32, height as i32, "png", exe_path, new_path],
+            )
+            .map_err(|e| e.to_string())?;
+
+        Ok(ImageRecord {
+            id,
+            width: width as i32,
+            height: height as i32,
+            format: Some("png".to_string()),
+            path: exe_path.to_string(),
+            new_path,
+        })
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn extract_exe_icon(&self, _exe_path: &str) -> Result<ImageRecord, String> {
+        Err("Icon extraction only supported on Windows".to_string())
     }
 
     pub fn load_image_base64(&self, id: &str) -> Result<Option<String>, String> {
@@ -1190,8 +1376,6 @@ mod tests {
         assert_eq!(found.len(), 1);
     }
 
-    #[test]
-    
     // ─── Search Tests ───
 
     #[test]
@@ -1240,10 +1424,6 @@ mod tests {
     }
 
     #[test]
-    
-    #[test]
-    
-    #[test]
     fn test_search_projs_with_tag_filter() {
         let db = test_db();
 
@@ -1275,7 +1455,10 @@ mod tests {
         let t2 = db.insert_tag("csharp", "00ff00", 1, 0).unwrap();
         let r = db.search_projs("Project", &[t2.id.clone()], None).unwrap();
         assert_eq!(r.items.len(), 0, "Proj: non-matching tag → 0");
-    }fn test_search_engines_with_tag_filter() {
+    }
+
+    #[test]
+    fn test_search_engines_with_tag_filter() {
         let db = test_db();
 
         // Create a tag
@@ -1283,7 +1466,7 @@ mod tests {
 
         // Create an engine WITH the tag
         let e1 = Engine { id: String::new(), version: "4.2".into(), directory: "C:/godot_mono.exe".into(), is_enc: false, enc_key: String::new(), has_console: false, console_dir: String::new(), name: "Godot Mono".into(), is_default: false, main_version: 4, desc: "Has mono".into(), sort: 0, is_delete: false };
-        let id1 = db.add_engine(&e1, &[tag.id.clone()]).unwrap();
+        let _id1 = db.add_engine(&e1, &[tag.id.clone()]).unwrap();
 
         // Create an engine WITHOUT the tag
         let e2 = Engine { id: String::new(), version: "4.0".into(), directory: "C:/godot_std.exe".into(), is_enc: false, enc_key: String::new(), has_console: false, console_dir: String::new(), name: "Godot Standard".into(), is_default: false, main_version: 4, desc: "Standard".into(), sort: 0, is_delete: false };
@@ -1307,7 +1490,10 @@ mod tests {
         let other_tag = db.insert_tag("csharp", "00ff00", 0, 0).unwrap();
         let result = db.search_engines("Godot", &[other_tag.id.clone()], None).unwrap();
         assert_eq!(result.items.len(), 0, "Non-matching tag should find nothing");
-    }fn test_list_all_engines() {
+    }
+
+    #[test]
+    fn test_list_all_engines() {
         let db = test_db();
         for i in 0..3 {
             let e = Engine { id: String::new(), version: "4.0".into(), directory: format!("C:/godot{}.exe", i), is_enc: false, enc_key: String::new(), has_console: false, console_dir: String::new(), name: format!("Godot {}", i), is_default: false, main_version: 4, desc: String::new(), sort: 0, is_delete: false };
@@ -1316,7 +1502,9 @@ mod tests {
         let items = db.list_all_engines().unwrap();
         assert_eq!(items.len(), 3);
     }
-fn test_copy_to_cache() {
+
+    #[test]
+    fn test_copy_to_cache() {
         let db = test_db();
         let temp_dir = std::env::temp_dir();
         let src = temp_dir.join("test-icon.png");

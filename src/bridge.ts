@@ -48,8 +48,8 @@ export async function dbSearchProjs(
 ): Promise<{ items: EntityWithExtras<Proj>[]; total: number }> {
   return invoke('db_search_projs', { search, tagIds, page });
 }
-export async function dbAddProj(proj: Partial<Proj>, tagIds: string[], imagePaths: string[]): Promise<string> {
-  return invoke('db_add_proj', { proj, tagIds, imagePaths });
+export async function dbAddProj(proj: Partial<Proj>, tagIds: string[], imageIds: string[]): Promise<string> {
+  return invoke('db_add_proj', { proj, tagIds, imageIds });
 }
 export async function dbUpdateProj(proj: Proj, tagIds: string[], imageIds: string[]): Promise<void> {
   return invoke('db_update_proj', { proj, tagIds, imageIds });
@@ -77,8 +77,8 @@ export async function dbSearchAssets(
 ): Promise<{ items: EntityWithExtras<Asset>[]; total: number }> {
   return invoke('db_search_assets', { search, tagIds, page });
 }
-export async function dbAddAsset(asset: Partial<Asset>, tagIds: string[], imagePaths: string[]): Promise<string> {
-  return invoke('db_add_asset', { asset, tagIds, imagePaths });
+export async function dbAddAsset(asset: Partial<Asset>, tagIds: string[], imageIds: string[]): Promise<string> {
+  return invoke('db_add_asset', { asset, tagIds, imageIds });
 }
 export async function dbUpdateAsset(asset: Asset, tagIds: string[], imageIds: string[]): Promise<void> {
   return invoke('db_update_asset', { asset, tagIds, imageIds });
@@ -103,8 +103,8 @@ export async function dbSearchTools(
 ): Promise<{ items: EntityWithExtras<Tool>[]; total: number }> {
   return invoke('db_search_tools', { search, tagIds, page });
 }
-export async function dbAddTool(tool: Partial<Tool>, tagIds: string[], imagePaths: string[]): Promise<string> {
-  return invoke('db_add_tool', { tool, tagIds, imagePaths });
+export async function dbAddTool(tool: Partial<Tool>, tagIds: string[], imageIds: string[]): Promise<string> {
+  return invoke('db_add_tool', { tool, tagIds, imageIds });
 }
 export async function dbUpdateTool(tool: Tool, tagIds: string[], imageIds: string[]): Promise<void> {
   return invoke('db_update_tool', { tool, tagIds, imageIds });
@@ -172,6 +172,9 @@ export async function dbLoadImage(id: string): Promise<string | null> {
 
 export async function dbLoadIcon(iconPath: string, baseDir: string, entityId: string, entityType: number): Promise<string | null> {
   return invoke('db_load_icon', { iconPath, baseDir, entityId, entityType });
+}
+export async function dbExtractExeIcon(exePath: string): Promise<ImageRecord> {
+  return invoke('db_extract_exe_icon', { exePath });
 }
 
 // ═══════════════════════════ Settings ═══════════════════════════
