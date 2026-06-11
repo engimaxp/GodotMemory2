@@ -112,10 +112,16 @@ interface AssetRowProps {
 
 const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onOpenFolder }) => {
   const e = Asset.entity;
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (Asset.images.length > 0) {
+      bridge.dbLoadImage(Asset.images[0].id).then(setIconSrc).catch(() => setIconSrc(null));
+    }
+  }, [Asset.images]);
   return (
     <div className="item-row">
-      <div className="item-icon" style={{ background: "#6366f1" }}>
-        <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>A</span>
+      <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#6366f1" }}>
+        {iconSrc ? <img src={iconSrc} alt="" /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>A</span>}
       </div>
       <div className="item-info">
         <div className="item-name">{e.name || "Unnamed"}</div>
@@ -123,9 +129,9 @@ const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onO
       </div>
       <div className="item-tags">{Asset.tags.slice(0, 3).map(t => <span key={t.id} className="tag-chip" style={{ background: "#" + t.color + "22", color: "#" + t.color }}>{t.name}</span>)}</div>
       <div className="item-actions">
-        <button className="item-btn" onClick={onRun} title="Open Link">
+        {e.link && <button className="item-btn" onClick={onRun} title="Open Link">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-        </button>
+        </button>}
         <button className="item-btn" onClick={onOpenFolder} title="Open Folder">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
         </button>

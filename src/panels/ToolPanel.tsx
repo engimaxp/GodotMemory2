@@ -109,10 +109,18 @@ interface ToolRowProps {
 
 const ToolRow: React.FC<ToolRowProps> = ({ Tool, onEdit, onDelete, onRun, onOpenFolder }) => {
   const e = Tool.entity;
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (Tool.images.length > 0) {
+      bridge.dbLoadImage(Tool.images[0].id).then(setIconSrc).catch(() => setIconSrc(null));
+    } else if (e.icon) {
+      bridge.dbLoadIcon(e.icon, e.directory, Tool.entity.id, 3).then(setIconSrc).catch(() => setIconSrc(null));
+    }
+  }, [Tool.images, e.icon, e.directory]);
   return (
     <div className="item-row">
-      <div className="item-icon" style={{ background: "#f59e0b" }}>
-        <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>T</span>
+      <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#f59e0b" }}>
+        {iconSrc ? <img src={iconSrc} alt="" /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>T</span>}
       </div>
       <div className="item-info">
         <div className="item-name">{e.name || "Unnamed"}</div>

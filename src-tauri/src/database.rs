@@ -851,6 +851,33 @@ impl Database {
         Ok(ImageRecord { id, width: w, height: h, format: Some(ext.to_string()), path: src_path.to_string(), new_path })
     }
 
+    pub fn load_entity_icon(&self, icon_path: &str, base_dir: &str, entity_id: &str, entity_type: i32) -> Result<Option<String>, String> {
+        if icon_path.is_empty() { return Ok(None); }
+
+        let resolved = if icon_path.starts_with("res://") {
+            std::path::Path::new(base_dir).join(&icon_path[6..])
+        } else {
+            std::path::Path::new(base_dir).join(&icon_path)
+        };
+
+        let resolved_str = resolved.to_string_lossy().to_string();
+        if !resolved.exists() { return Ok(None); }
+
+        // Check if already cached
+        let existing = self.get_images_for(entity_id, entity_type)?;
+        if !existing.is_empty() {
+            return self.load_image_base64(&existing[0].id);
+        }
+
+        // Copy to cache and link
+        if let Ok(img) = self.copy_to_cache(&resolved_str) {
+            let _ = self.add_image_relation(&img.id, entity_id, entity_type);
+            return self.load_image_base64(&img.id);
+        }
+
+        Ok(None)
+    }
+
     pub fn load_image_base64(&self, id: &str) -> Result<Option<String>, String> {
         let img: ImageRecord = self.conn.query_row(
             "SELECT Id,Width,Height,Format,Path,NewPath FROM Images WHERE Id=?1",

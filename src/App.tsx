@@ -60,6 +60,16 @@ function MainWindow() {
     return () => { unlisten.then(fn => fn()); };
   }, []);
 
+  // Listen for panel switch events from child panels
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const panel = (e as CustomEvent).detail as PanelName;
+      if (panel) setActivePanel(panel);
+    };
+    window.addEventListener('switch-panel', handler);
+    return () => window.removeEventListener('switch-panel', handler);
+  }, []);
+
   // Updates settings
   const updateSettings = useCallback(async (partial: Partial<Settings>) => {
     if (!settings) return;
@@ -109,7 +119,7 @@ function MainWindow() {
   const switchToPanel = useCallback(async () => {
     try {
       await bridge.setWindowMode('panel');
-      await bridge.resizeWindow(750, 1050);
+      await bridge.resizeWindow(750, 750);
     } catch {}
   }, []);
 

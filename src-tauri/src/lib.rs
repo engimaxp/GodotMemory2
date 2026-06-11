@@ -283,6 +283,12 @@ fn db_load_image(app: tauri::AppHandle, id: String) -> Result<Option<String>, St
     db.load_image_base64(&id)
 }
 
+#[tauri::command]
+fn db_load_icon(app: tauri::AppHandle, icon_path: String, base_dir: String, entity_id: String, entity_type: i32) -> Result<Option<String>, String> {
+    let db = database::Database::new(&app)?;
+    db.load_entity_icon(&icon_path, &base_dir, &entity_id, entity_type)
+}
+
 // ═══════════════════ Settings Commands ═══════════════════
 
 #[tauri::command]
@@ -466,6 +472,17 @@ fn launch_app(path: String) -> Result<(), String> {
     std::process::Command::new(&path)
         .spawn()
         .map_err(|e| format!("Failed to launch '{}': {}", path, e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn launch_project(engine_path: String, project_dir: String) -> Result<(), String> {
+    std::process::Command::new(&engine_path)
+        .arg("-e")
+        .arg("--path")
+        .arg(&project_dir)
+        .spawn()
+        .map_err(|e| format!("Failed to launch project: {}", e))?;
     Ok(())
 }
 
@@ -773,11 +790,11 @@ pub fn run() {
             db_get_diary_detail, db_save_diary_detail, db_query_diary_details,
             db_list_tags, db_query_tag_by_name_like, db_insert_tag,
             db_set_fast_tag, db_update_tag_color,
-            db_copy_image_to_cache, db_load_image,
+            db_copy_image_to_cache, db_load_image, db_load_icon,
             get_settings, save_settings,
             set_window_mode, get_window_mode, start_dragging, toggle_panel,
             resize_window, get_screen_work_area, snap_to_edge,
-            open_folder, launch_app, detect_engine_version, scan_project_file,
+            open_folder, launch_app, launch_project, detect_engine_version, scan_project_file,
             open_settings_window,
             db_import_from_path,
         ])

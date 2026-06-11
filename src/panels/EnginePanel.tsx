@@ -126,10 +126,16 @@ interface EngineRowProps {
 
 const EngineRow: React.FC<EngineRowProps> = ({ engine, onEdit, onDelete, onRun, onOpenFolder }) => {
   const e = engine.entity;
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (engine.images.length > 0) {
+      bridge.dbLoadImage(engine.images[0].id).then(setIconSrc).catch(() => setIconSrc(null));
+    }
+  }, [engine.images]);
   return (
     <div className="item-row">
-      <div className="item-icon" style={{ background: e.main_version === 3 ? "#478bfb" : "#6d28d9" }}>
-        <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>
+      <div className="item-icon" style={{ background: iconSrc ? "transparent" : (e.main_version === 3 ? "#478bfb" : "#6d28d9") }}>
+        {iconSrc ? <img src={iconSrc} alt="" /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>}
       </div>
       <div className="item-info">
         <div className="item-name">{e.name || "Unnamed"}</div>

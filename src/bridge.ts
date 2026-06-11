@@ -167,6 +167,10 @@ export async function dbLoadImage(id: string): Promise<string | null> {
   return invoke('db_load_image', { id });
 }
 
+export async function dbLoadIcon(iconPath: string, baseDir: string, entityId: string, entityType: number): Promise<string | null> {
+  return invoke('db_load_icon', { iconPath, baseDir, entityId, entityType });
+}
+
 // ═══════════════════════════ Settings ═══════════════════════════
 
 export async function getSettings(): Promise<Settings> {
@@ -204,6 +208,9 @@ export async function snapToEdge(): Promise<SnapResult> {
 
 export async function launchApp(path: string): Promise<void> {
   return invoke('launch_app', { path });
+}
+export async function launchProject(enginePath: string, projectDir: string): Promise<void> {
+  return invoke('launch_project', { enginePath, projectDir });
 }
 export async function openFolder(path: string): Promise<void> {
   return invoke('open_folder', { path });

@@ -1,5 +1,5 @@
 ﻿import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Proj, Tag, EntityWithExtras, Page } from '../types';
+import type { Proj, Engine, Tag, EntityWithExtras, Page } from '../types';
 import { TagType } from '../types';
 import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
@@ -25,6 +25,9 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
   const [engineId, setEngineId] = useState(proj?.engine_id ?? "");
   const [desc, setDesc] = useState(proj?.desc ?? "");
   const [saving, setSaving] = useState(false);
+  const [engines, setEngines] = useState<EntityWithExtras<Engine>[]>([]);
+
+  useEffect(() => { bridge.dbListAllEngines().then(setEngines).catch(() => {}); }, []);
 
   const {
     tagIds, setTagIds, allTags, fastTags, tagInput, setTagInput,
@@ -61,6 +64,9 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
           <div className="form-group"><label className="form-label">Engine</label>
             <select className="form-select" value={engineId} onChange={e => setEngineId(e.target.value)}>
               <option value="">Select engine...</option>
+              {engines.filter(eng => eng.entity.main_version === (parseInt(mainVersion) || 4)).map(eng => (
+                <option key={eng.entity.id} value={eng.entity.id}>{eng.entity.name} ({eng.entity.version})</option>
+              ))}
             </select>
           </div>
           <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" /></div>
@@ -111,25 +117,41 @@ const ProjEditModal: React.FC<ProjEditModalProps> = ({ proj, initialTagIds, onCl
 
 interface ProjRowProps {
   Proj: EntityWithExtras<Proj>;
+  engineName?: string;
   onEdit: () => void;
   onDelete: () => void;
   onRun: () => void;
   onOpenFolder: () => void;
+  onOpenEngine?: () => void;
 }
 
-const ProjRow: React.FC<ProjRowProps> = ({ Proj, onEdit, onDelete, onRun, onOpenFolder }) => {
+const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, onRun, onOpenFolder, onOpenEngine }) => {
   const e = Proj.entity;
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (Proj.images.length > 0) {
+      bridge.dbLoadImage(Proj.images[0].id).then(setIconSrc).catch(() => setIconSrc(null));
+    } else if (e.icon) {
+      bridge.dbLoadIcon(e.icon, e.directory, Proj.entity.id, 1).then(setIconSrc).catch(() => setIconSrc(null));
+    }
+  }, [Proj.images, e.icon, e.directory]);
   return (
     <div className="item-row">
-      <div className="item-icon" style={{ background: e.main_version === 3 ? "#478bfb" : "#6d28d9" }}>
-        <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>
+      <div className="item-icon" style={{ background: iconSrc ? "transparent" : (e.main_version === 3 ? "#478bfb" : "#6d28d9") }}>
+        {iconSrc ? <img src={iconSrc} alt="" /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>}
       </div>
       <div className="item-info">
         <div className="item-name">{e.name || "Unnamed"}</div>
         <div className="item-sub">{e.version} | {e.directory}</div>
+        {engineName && <div className="item-sub" style={{ fontSize: 11, opacity: 0.7 }}>Engine: {engineName}</div>}
       </div>
       <div className="item-tags">{Proj.tags.slice(0, 3).map(t => <span key={t.id} className="tag-chip" style={{ background: "#" + t.color + "22", color: "#" + t.color }}>{t.name}</span>)}</div>
       <div className="item-actions">
+        {onOpenEngine && (
+          <button className="item-btn" onClick={onOpenEngine} title="Open Engine">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+          </button>
+        )}
         <button className="item-btn" onClick={onRun} title="Run">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
         </button>
@@ -166,8 +188,17 @@ const ProjPanel: React.FC = () => {
   const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const tagSearchRef = useRef<HTMLDivElement>(null);
+  // Engine map for displaying associated engine name
+  const [engineMap, setEngineMap] = useState<Record<string, Engine>>({});
 
-  useEffect(() => { bridge.dbListTags(TagType.Proj, 0).then(setAllSearchTags).catch(() => {}); }, []);
+  useEffect(() => {
+    bridge.dbListTags(TagType.Proj, 0).then(setAllSearchTags).catch(() => {});
+    bridge.dbListAllEngines().then(engines => {
+      const map: Record<string, Engine> = {};
+      engines.forEach(e => { map[e.entity.id] = e.entity; });
+      setEngineMap(map);
+    }).catch(() => {});
+  }, []);
 
   // Tag search autocomplete
   useEffect(() => {
@@ -292,10 +323,21 @@ const ProjPanel: React.FC = () => {
         )}
         {items.map(e => (
           <ProjRow key={e.entity.id} Proj={e}
+            engineName={engineMap[e.entity.engine_id]?.name}
             onEdit={() => { setEditItem(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteProj(e.entity.id); load(); } catch {} }}
-            onRun={() => { try { bridge.launchApp(e.entity.directory); } catch {} }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
+            onRun={() => {
+              const engine = engineMap[e.entity.engine_id];
+              if (engine) {
+                bridge.launchProject(engine.directory, e.entity.directory);
+              } else {
+                showToast('No engine associated with this project');
+              }
+            }}
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }}
+            onOpenEngine={e.entity.engine_id && engineMap[e.entity.engine_id] ? () => {
+              window.dispatchEvent(new CustomEvent('switch-panel', { detail: 'Engine' }));
+            } : undefined} />
         ))}
       </div>
 
