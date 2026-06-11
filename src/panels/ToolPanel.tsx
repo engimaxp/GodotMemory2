@@ -5,6 +5,7 @@ import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
 import { useDebounce } from '../hooks/usePanelManager';
 import { useTagSelector } from '../hooks/useTagSelector';
+import { useToast } from '../components/Toast';
 import '../styles/panels.css';
 
 interface ToolEditModalProps {
@@ -138,6 +139,7 @@ const ToolRow: React.FC<ToolRowProps> = ({ Tool, onEdit, onDelete, onRun, onOpen
 
 const ToolPanel: React.FC = () => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [Tools, setTools] = useState<EntityWithExtras<Tool>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
@@ -283,7 +285,7 @@ const ToolPanel: React.FC = () => {
             onEdit={() => { setEditTool(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteTool(e.entity.id); load(); } catch {} }}
             onRun={() => { try { bridge.launchApp(e.entity.directory); } catch {} }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(() => {}); }} />
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
         ))}
       </div>
 

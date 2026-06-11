@@ -5,6 +5,7 @@ import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
 import { useDebounce } from '../hooks/usePanelManager';
 import { useTagSelector } from '../hooks/useTagSelector';
+import { useToast } from '../components/Toast';
 import '../styles/panels.css';
 
 interface ProjEditModalProps {
@@ -148,6 +149,7 @@ const ProjRow: React.FC<ProjRowProps> = ({ Proj, onEdit, onDelete, onRun, onOpen
 
 const ProjPanel: React.FC = () => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [items, setItems] = useState<EntityWithExtras<Proj>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
@@ -293,7 +295,7 @@ const ProjPanel: React.FC = () => {
             onEdit={() => { setEditItem(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteProj(e.entity.id); load(); } catch {} }}
             onRun={() => { try { bridge.launchApp(e.entity.directory); } catch {} }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(() => {}); }} />
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
         ))}
       </div>
 

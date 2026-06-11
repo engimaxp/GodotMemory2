@@ -5,6 +5,8 @@ import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
 import { useDebounce } from '../hooks/usePanelManager';
 import { useTagSelector } from '../hooks/useTagSelector';
+import { useToast } from '../components/Toast';
+import { open } from '@tauri-apps/plugin-shell';
 import '../styles/panels.css';
 
 interface AssetEditModalProps {
@@ -121,8 +123,8 @@ const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onO
       </div>
       <div className="item-tags">{Asset.tags.slice(0, 3).map(t => <span key={t.id} className="tag-chip" style={{ background: "#" + t.color + "22", color: "#" + t.color }}>{t.name}</span>)}</div>
       <div className="item-actions">
-        <button className="item-btn" onClick={onRun} title="Run">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+        <button className="item-btn" onClick={onRun} title="Open Link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
         </button>
         <button className="item-btn" onClick={onOpenFolder} title="Open Folder">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
@@ -140,6 +142,7 @@ const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onO
 
 const AssetPanel: React.FC = () => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [Assets, setAssets] = useState<EntityWithExtras<Asset>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
@@ -284,8 +287,8 @@ const AssetPanel: React.FC = () => {
           <AssetRow key={e.entity.id} Asset={e}
             onEdit={() => { setEditAsset(e.entity); setEditItemTags(e.tags.map(t => t.id)); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteAsset(e.entity.id); load(); } catch {} }}
-            onRun={() => { try { bridge.launchApp(e.entity.directory); } catch {} }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(() => {}); }} />
+            onRun={() => { const link = e.entity.link; if (link) open(link).catch(() => {}); }}
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
         ))}
       </div>
 

@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { Bubble } from './components/Bubble';
 import { PopupPanel } from './components/PopupPanel';
+import { ToastProvider } from './components/Toast';
 import EnginePanel from './panels/EnginePanel';
 import ProjPanel from './panels/ProjPanel';
 import AssetPanel from './panels/AssetPanel';
@@ -155,6 +156,7 @@ function MainWindow() {
 
   return (
     <I18nProvider language={lang}>
+    <ToastProvider>
     <div className="app-container">
       <SettingsStyles />
 
@@ -180,6 +182,7 @@ function MainWindow() {
         </PopupPanel>
       )}
     </div>
+    </ToastProvider>
     </I18nProvider>
   );
 }

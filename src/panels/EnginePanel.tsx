@@ -5,6 +5,7 @@ import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
 import { useDebounce } from '../hooks/usePanelManager';
 import { useTagSelector } from '../hooks/useTagSelector';
+import { useToast } from '../components/Toast';
 import '../styles/panels.css';
 
 interface EngineEditModalProps {
@@ -155,6 +156,7 @@ const EngineRow: React.FC<EngineRowProps> = ({ engine, onEdit, onDelete, onRun, 
 
 const EnginePanel: React.FC = () => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [engines, setEngines] = useState<EntityWithExtras<Engine>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
@@ -300,7 +302,7 @@ const EnginePanel: React.FC = () => {
              onEdit={() => { setEditEngine(e.entity); setEditEngineTags(e.tags.map(t => t.id)); setShowEdit(true); }}
             onDelete={() => { try { bridge.dbDeleteEngine(e.entity.id); load(); } catch {} }}
             onRun={() => { try { bridge.launchApp(e.entity.directory); } catch {} }}
-            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(() => {}); }} />
+            onOpenFolder={() => { bridge.openFolder(e.entity.directory).catch(e => showToast(e)); }} />
         ))}
       </div>
 
