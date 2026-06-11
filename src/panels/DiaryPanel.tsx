@@ -1,22 +1,33 @@
-import React, { useState, useCallback } from 'react';
-import { useI18n } from '../i18n';
-import type { Diary, DiaryDetail, Tag } from '../types';
+import React, { useState, useCallback, useMemo } from 'react';
+import type { Diary, DiaryDetail } from '../types';
 import * as bridge from '../bridge';
 import { useOnce } from '../hooks/usePanelManager';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+interface MonthGroup {
+  label: string;
+  details: DiaryDetail[];
+}
 
 const DiaryPanel: React.FC = () => {
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [details, setDetails] = useState<DiaryDetail[]>([]);
   const [selectedDiary, setSelectedDiary] = useState<Diary | null>(null);
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDetail, setSelectedDetail] = useState<DiaryDetail | null>(null);
   const [content, setContent] = useState('');
   const [editName, setEditName] = useState('');
   const [showNew, setShowNew] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [ascending, setAscending] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -27,33 +38,78 @@ const DiaryPanel: React.FC = () => {
 
   useOnce(load);
 
+  const monthGroups = useMemo<MonthGroup[]>(() => {
+    if (details.length === 0) return [];
+    const sorted = [...details].sort((a, b) =>
+      ascending
+        ? a.create_date.localeCompare(b.create_date)
+        : b.create_date.localeCompare(a.create_date)
+    );
+    const groups: MonthGroup[] = [];
+    for (const d of sorted) {
+      const monthKey = d.create_date.slice(0, 7);
+      const last = groups[groups.length - 1];
+      if (last && last.details[0].create_date.slice(0, 7) === monthKey) {
+        last.details.push(d);
+      } else {
+        const [y, m] = monthKey.split('-');
+        groups.push({ label: `${MONTHS[parseInt(m) - 1]} ${y}`, details: [d] });
+      }
+    }
+    return groups;
+  }, [details, ascending]);
+
+  const refreshDetails = useCallback(async (diaryId: string) => {
+    const allDetails = await bridge.dbQueryAllDiaryDetails(diaryId);
+    setDetails(allDetails);
+    return allDetails;
+  }, []);
+
   const selectDiary = async (d: Diary) => {
     setSelectedDiary(d);
+    setSelectedDetail(null);
+    setContent('');
     try {
-      const allDetails = await bridge.dbQueryDiaryDetails(d.id, year);
-      setDetails(allDetails);
+      await refreshDetails(d.id);
     } catch {}
   };
 
-  const selectDate = async (dateStr: string) => {
-    setSelectedDate(dateStr);
-    if (!selectedDiary) return;
-    try {
-      const detail = await bridge.dbGetDiaryDetail(selectedDiary.id, dateStr);
-      setContent(detail?.content ?? '');
-    } catch {
-      setContent('');
-    }
+  const selectDetail = (detail: DiaryDetail) => {
+    setSelectedDetail(detail);
+    setContent(detail.content);
   };
 
   const saveContent = async () => {
-    if (!selectedDiary || !selectedDate) return;
+    if (!selectedDiary || !selectedDetail) return;
     try {
       await bridge.dbSaveDiaryDetail({
         diary_id: selectedDiary.id,
-        create_date: selectedDate,
+        create_date: selectedDetail.create_date,
         content,
       });
+      setDetails(prev => prev.map(d =>
+        d.create_date === selectedDetail.create_date ? { ...d, content } : d
+      ));
+    } catch (e) { console.error(e); }
+  };
+
+  const writeToday = async () => {
+    if (!selectedDiary) return;
+    const today = todayStr();
+    const existing = details.find(d => d.create_date === today);
+    if (existing) {
+      selectDetail(existing);
+      return;
+    }
+    try {
+      await bridge.dbSaveDiaryDetail({
+        diary_id: selectedDiary.id,
+        create_date: today,
+        content: '',
+      });
+      const allDetails = await refreshDetails(selectedDiary.id);
+      const created = allDetails.find(d => d.create_date === today);
+      if (created) selectDetail(created);
     } catch (e) { console.error(e); }
   };
 
@@ -67,30 +123,9 @@ const DiaryPanel: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const firstDay = new Date(year, month - 1, 1).getDay();
-
-  const datesWithContent = new Set(details.map(d => d.create_date));
-
-  const calendarDays = [];
-  for (let i = 0; i < firstDay; i++) calendarDays.push(<div key={`e${i}`} className="calendar-day empty" />);
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const hasContent = datesWithContent.has(dateStr);
-    calendarDays.push(
-      <button
-        key={d}
-        className={`calendar-day ${selectedDate === dateStr ? 'selected' : ''} ${hasContent ? 'has-content' : ''}`}
-        onClick={() => selectDate(dateStr)}
-      >
-        {d}
-      </button>
-    );
-  }
-
   return (
     <div className="panel-container" style={{ flexDirection: 'row', gap: 12 }}>
-      {/* Diary List */}
+      {/* Column 1: Diary List */}
       <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)' }}>Diaries</span>
@@ -99,8 +134,11 @@ const DiaryPanel: React.FC = () => {
         {diaries.map(d => (
           <button
             key={d.id}
-            className={`item-row ${selectedDiary?.id === d.id ? 'active' : ''}`}
-            style={{ padding: '6px 8px', border: selectedDiary?.id === d.id ? '1px solid var(--accent-blue)' : undefined }}
+            className="item-row"
+            style={{
+              padding: '6px 8px',
+              border: selectedDiary?.id === d.id ? '1px solid var(--accent-blue)' : undefined,
+            }}
             onClick={() => selectDiary(d)}
           >
             <div className="item-info">
@@ -116,38 +154,82 @@ const DiaryPanel: React.FC = () => {
         )}
       </div>
 
-      {/* Calendar + Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* Calendar nav */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-          <button className="btn btn-secondary btn-small" onClick={() => { if (month === 1) { setYear(y => y - 1); setMonth(12); } else setMonth(m => m - 1); }}>‹</button>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>{year}.{String(month).padStart(2, '0')}</span>
-          <button className="btn btn-secondary btn-small" onClick={() => { if (month === 12) { setYear(y => y + 1); setMonth(1); } else setMonth(m => m + 1); }}>›</button>
-        </div>
-        {/* Calendar grid */}
-        <div className="calendar-grid" style={{
-          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2,
-        }}>
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-            <div key={d} style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-faint)', padding: 2 }}>{d}</div>
-          ))}
-          {calendarDays}
-        </div>
+      {/* Column 2: Date browser */}
+      <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {selectedDiary && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexShrink: 0 }}>
+              <button
+                className="diary-sort-btn"
+                onClick={() => setAscending(v => !v)}
+                title={ascending ? 'Newest first' : 'Oldest first'}
+              >
+                {ascending ? '↑' : '↓'}
+              </button>
+              <span className="panel-count">{details.length}</span>
+              <button className="btn btn-primary btn-small" style={{ marginLeft: 'auto' }} onClick={writeToday}>
+                + Today
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {monthGroups.length === 0 && (
+                <div className="empty-state">
+                  <p>No entries yet</p>
+                </div>
+              )}
+              {monthGroups.map(g => (
+                <div key={g.label} className="diary-month-section">
+                  <div className="diary-month-header">{g.label}</div>
+                  <div className="diary-date-grid">
+                    {g.details.map(d => {
+                      const dt = new Date(d.create_date);
+                      const day = dt.getDate();
+                      const dow = DOW[dt.getDay()];
+                      const isSelected = selectedDetail?.create_date === d.create_date;
+                      return (
+                        <button
+                          key={d.create_date}
+                          className={`diary-date-chip${isSelected ? ' selected' : ''}`}
+                          onClick={() => selectDetail(d)}
+                        >
+                          {day}
+                          <span className="dow">{dow}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {!selectedDiary && (
+          <div className="empty-state">
+            <p>Select a diary</p>
+          </div>
+        )}
+      </div>
 
-        {/* Content Editor */}
-        {selectedDiary && selectedDate && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Column 3: Content Editor */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+        {selectedDetail && (
+          <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{selectedDate}</span>
+              <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{selectedDetail.create_date}</span>
               <button className="btn btn-primary btn-small" onClick={saveContent}>Save</button>
             </div>
             <textarea
               className="form-textarea"
-              style={{ flex: 1, minHeight: 150 }}
+              style={{ flex: 1, minHeight: 200 }}
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="Write your diary entry..."
             />
+          </>
+        )}
+        {selectedDiary && !selectedDetail && (
+          <div className="empty-state">
+            <p>Select a date</p>
           </div>
         )}
       </div>

@@ -61,6 +61,18 @@
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--ink-faint); gap: 8px; }
 .empty-state p { font-size: 13px; }
 
+.diary-sort-btn { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--ink-soft); cursor: pointer; font-size: 13px; transition: all 150ms ease; }
+.diary-sort-btn:hover { background: var(--bg-hover); color: var(--ink-strong); }
+.diary-month-section { margin-bottom: 12px; }
+.diary-month-header { font-size: 12px; font-weight: 600; color: var(--ink-soft); padding: 4px 0 6px; letter-spacing: 0.3px; }
+.diary-date-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.diary-date-chip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary); color: var(--ink-strong); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 150ms ease; }
+.diary-date-chip:hover { background: var(--bg-hover); border-color: var(--ink-faint); }
+.diary-date-chip.selected { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+.diary-date-chip.selected:hover { background: var(--accent-blue-hover); }
+.diary-date-chip .dow { font-size: 8px; font-weight: 400; opacity: 0.6; line-height: 1; }
+.diary-date-chip.selected .dow { opacity: 0.8; }
+
 .tag-selector { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; min-height: 36px; }
 .tag-input-area { display: flex; gap: 4px; align-items: center; }
 .tag-input { padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--ink-strong); font-size: 12px; outline: none; width: 140px; }

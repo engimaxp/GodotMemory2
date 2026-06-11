@@ -237,6 +237,12 @@ fn db_query_diary_details(app: tauri::AppHandle, diary_id: String, year: i32) ->
     db.query_diary_details(&diary_id, year)
 }
 
+#[tauri::command]
+fn db_query_all_diary_details(app: tauri::AppHandle, diary_id: String) -> Result<Vec<database::DiaryDetail>, String> {
+    let db = database::Database::new(&app)?;
+    db.query_all_diary_details(&diary_id)
+}
+
 // ═══════════════════ Tag Commands ═══════════════════
 
 #[tauri::command]
@@ -787,7 +793,7 @@ pub fn run() {
             db_list_tools, db_list_all_tools, db_search_tools,
             db_add_tool, db_update_tool, db_delete_tool, db_toggle_tool_star,
             db_list_diaries, db_add_diary, db_update_diary, db_delete_diary,
-            db_get_diary_detail, db_save_diary_detail, db_query_diary_details,
+            db_get_diary_detail, db_save_diary_detail, db_query_diary_details, db_query_all_diary_details,
             db_list_tags, db_query_tag_by_name_like, db_insert_tag,
             db_set_fast_tag, db_update_tag_color,
             db_copy_image_to_cache, db_load_image, db_load_icon,

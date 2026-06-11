@@ -752,6 +752,15 @@ impl Database {
         rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
     }
 
+    pub fn query_all_diary_details(&self, diary_id: &str) -> Result<Vec<DiaryDetail>, String> {
+        let mut stmt = self.conn.prepare(
+            "SELECT Id,CreateDate,DiaryId,Content FROM DiaryDetail WHERE DiaryId=?1 ORDER BY CreateDate DESC"
+        ).map_err(|e| e.to_string())?;
+        let rows = stmt.query_map(params![diary_id], map_diary_detail)
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    }
+
     // ═══════════════════ Tags ═══════════════════
 
     pub fn list_tags(&self, r#type: i32, sub_type: i32) -> Result<Vec<Tag>, String> {
@@ -854,7 +863,17 @@ impl Database {
     pub fn load_entity_icon(&self, icon_path: &str, base_dir: &str, entity_id: &str, entity_type: i32) -> Result<Option<String>, String> {
         if icon_path.is_empty() { return Ok(None); }
 
-        let resolved = if icon_path.starts_with("res://") {
+        // Check if already cached via ImageRelation
+        let existing = self.get_images_for(entity_id, entity_type)?;
+        if !existing.is_empty() {
+            return self.load_image_base64(&existing[0].id);
+        }
+
+        // Resolve icon path to actual filesystem path
+        let resolved = if icon_path.starts_with("res://data/cache/") {
+            let cache_root = self.cache_dir.parent().unwrap_or(&self.cache_dir);
+            cache_root.join(icon_path.replace("res://data/cache/", ""))
+        } else if icon_path.starts_with("res://") {
             std::path::Path::new(base_dir).join(&icon_path[6..])
         } else {
             std::path::Path::new(base_dir).join(&icon_path)
@@ -863,13 +882,7 @@ impl Database {
         let resolved_str = resolved.to_string_lossy().to_string();
         if !resolved.exists() { return Ok(None); }
 
-        // Check if already cached
-        let existing = self.get_images_for(entity_id, entity_type)?;
-        if !existing.is_empty() {
-            return self.load_image_base64(&existing[0].id);
-        }
-
-        // Copy to cache and link
+        // Copy to cache (dedup by hash) and link for future fast lookup
         if let Ok(img) = self.copy_to_cache(&resolved_str) {
             let _ = self.add_image_relation(&img.id, entity_id, entity_type);
             return self.load_image_base64(&img.id);
@@ -888,7 +901,16 @@ impl Database {
             }),
         ).map_err(|e| e.to_string())?;
 
-        let bytes = fs::read(&img.new_path).map_err(|e| e.to_string())?;
+        // Resolve res://data/cache/ to the actual cache directory (migrated data)
+        let actual_path = if img.new_path.contains("res://data/cache/") {
+            let cache_root = self.cache_dir.parent().unwrap_or(&self.cache_dir);
+            let relative = img.new_path.replace("res://data/cache/", "");
+            cache_root.join(&relative)
+        } else {
+            std::path::PathBuf::from(&img.new_path)
+        };
+
+        let bytes = fs::read(&actual_path).map_err(|e| e.to_string())?;
         let ext = img.format.as_deref().unwrap_or("png");
         let mime = match ext {
             "jpg" | "jpeg" | "JPEG" | "JPG" => "image/jpeg",

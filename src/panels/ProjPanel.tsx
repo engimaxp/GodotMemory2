@@ -129,16 +129,14 @@ const ProjRow: React.FC<ProjRowProps> = ({ Proj, engineName, onEdit, onDelete, o
   const e = Proj.entity;
   const [iconSrc, setIconSrc] = useState<string | null>(null);
   useEffect(() => {
-    if (Proj.images.length > 0) {
-      bridge.dbLoadImage(Proj.images[0].id).then(setIconSrc).catch(() => setIconSrc(null));
-    } else if (e.icon) {
-      bridge.dbLoadIcon(e.icon, e.directory, Proj.entity.id, 1).then(setIconSrc).catch(() => setIconSrc(null));
+    if (e.icon) {
+      bridge.dbLoadImage(e.icon).then(setIconSrc).catch(() => setIconSrc(null));
     }
-  }, [Proj.images, e.icon, e.directory]);
+  }, [e.icon]);
   return (
     <div className="item-row">
       <div className="item-icon" style={{ background: iconSrc ? "transparent" : (e.main_version === 3 ? "#478bfb" : "#6d28d9") }}>
-        {iconSrc ? <img src={iconSrc} alt="" /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>}
+        {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>}
       </div>
       <div className="item-info">
         <div className="item-name">{e.name || "Unnamed"}</div>

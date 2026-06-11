@@ -139,6 +139,9 @@ export async function dbSaveDiaryDetail(detail: Partial<DiaryDetail>): Promise<s
 export async function dbQueryDiaryDetails(diaryId: string, year: number): Promise<DiaryDetail[]> {
   return invoke('db_query_diary_details', { diaryId, year });
 }
+export async function dbQueryAllDiaryDetails(diaryId: string): Promise<DiaryDetail[]> {
+  return invoke('db_query_all_diary_details', { diaryId });
+}
 
 // ═══════════════════════════ Tags ═══════════════════════════
 

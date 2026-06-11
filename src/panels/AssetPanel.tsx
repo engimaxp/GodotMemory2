@@ -121,7 +121,7 @@ const AssetRow: React.FC<AssetRowProps> = ({ Asset, onEdit, onDelete, onRun, onO
   return (
     <div className="item-row">
       <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#6366f1" }}>
-        {iconSrc ? <img src={iconSrc} alt="" /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>A</span>}
+        {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>A</span>}
       </div>
       <div className="item-info">
         <div className="item-name">{e.name || "Unnamed"}</div>
