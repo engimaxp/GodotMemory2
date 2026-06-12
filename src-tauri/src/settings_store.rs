@@ -21,6 +21,8 @@ pub struct Settings {
     pub snap_threshold: i64,
     #[serde(default)]
     pub remember_position: bool,
+    #[serde(default)]
+    pub auto_start: bool,
     pub last_ball_x: Option<i64>,
     pub last_ball_y: Option<i64>,
     #[serde(default = "default_edge")]
@@ -44,6 +46,7 @@ impl Default for Settings {
             bubble_size: default_size(),
             snap_threshold: default_threshold(),
             remember_position: false,
+            auto_start: false,
             last_ball_x: None,
             last_ball_y: None,
             last_snap_edge: default_edge(),

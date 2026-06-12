@@ -317,6 +317,18 @@ fn get_settings(app: tauri::AppHandle) -> Result<settings_store::Settings, Strin
 
 #[tauri::command]
 fn save_settings(app: tauri::AppHandle, new_settings: settings_store::Settings) -> Result<settings_store::Settings, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    {
+        let store = app.state::<SettingsStore>();
+        let old = store.get();
+        if old.auto_start != new_settings.auto_start {
+            if new_settings.auto_start {
+                app.autolaunch().enable().map_err(|e| e.to_string())?;
+            } else {
+                app.autolaunch().disable().map_err(|e| e.to_string())?;
+            }
+        }
+    }
     let settings = app.state::<SettingsStore>();
     settings.update(new_settings)
 }

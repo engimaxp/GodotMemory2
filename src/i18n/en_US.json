@@ -166,6 +166,8 @@
 
   "setting.title": "Setting",
   "setting.theme": "Theme",
+  "setting.auto_start": "Auto Start",
+  "setting.auto_start_desc": "Launch on system startup",
   "setting.language": "Language",
   "setting.default_panel": "Default Panel",
   "setting.screenshot_dir": "Screenshot Directory",

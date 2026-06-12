@@ -133,6 +133,7 @@ export interface Settings {
   bubble_size: number;
   snap_threshold: number;
   remember_position: boolean;
+  auto_start: boolean;
   last_ball_x?: number;
   last_ball_y?: number;
   last_snap_edge: SnapEdge;

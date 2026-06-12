@@ -111,6 +111,11 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
           <div className={"switch " + (theme === "dark" ? "switch--active" : "")} onClick={toggleTheme}><div className="switch-thumb" /></div>
         </div>
 
+        <div className="setting-item">
+          <div className="setting-info"><span className="setting-label">{t("setting.auto_start")}</span><span className="setting-desc">{t("setting.auto_start_desc")}</span></div>
+          <div className={"switch " + (settings.auto_start ? "switch--active" : "")} onClick={() => onUpdateSettings({ auto_start: !settings.auto_start })}><div className="switch-thumb" /></div>
+        </div>
+
         <div className="setting-item setting-item--column">
           <div className="setting-info"><span className="setting-label">{t("setting.language")}</span></div>
           <select className="form-select" value={settings.language} onChange={e => handleLanguage(e.target.value)} style={{ marginTop: 4 }}>

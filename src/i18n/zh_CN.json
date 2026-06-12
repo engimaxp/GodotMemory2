@@ -165,6 +165,8 @@
 
   "setting.title": "设置",
   "setting.theme": "主题",
+  "setting.auto_start": "开机自启动",
+  "setting.auto_start_desc": "系统启动时自动运行",
   "setting.language": "语言",
   "setting.default_panel": "默认板块",
   "setting.screenshot_dir": "截屏目录",

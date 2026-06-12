@@ -211,10 +211,11 @@ describe('Settings Module', () => {
       bubble_size: 120,
       snap_threshold: 40,
       remember_position: false,
+      auto_start: false,
       last_snap_edge: 'Right',
       screen_shot_dir: '',
     });
-    await saveSettings({ language: 'en_US', default_panel: 'Proj', bubble_opacity: 0.9, bubble_size: 120, snap_threshold: 40, remember_position: false, last_snap_edge: 'Right', screen_shot_dir: '' });
+    await saveSettings({ language: 'en_US', default_panel: 'Proj', bubble_opacity: 0.9, bubble_size: 120, snap_threshold: 40, remember_position: false, auto_start: false, last_snap_edge: 'Right', screen_shot_dir: '' });
     expect(invoke).toHaveBeenCalledWith('save_settings', expect.anything());
   });
 });

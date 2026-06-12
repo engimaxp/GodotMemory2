@@ -1,10 +1,22 @@
 # GodotMemory
 
+<p align="center">
+  <img src="src-tauri/icons/icon.png" width="128" height="128" alt="GodotMemory">
+</p>
+
 Godot Engine / Tool / Asset management tool — a floating bubble launcher that provides quick access to engine monitors, project management, asset browsing, tools, and diary notes.
 
 Built with [Tauri 2](https://v2.tauri.app), React, TypeScript, and Rust.
 
-![screenshot](screenshot.png)
+## Screenshots
+
+![Engine Monitor](screenshots/godot-memory_PQCpwpupJd.png)
+![Project Manager](screenshots/godot-memory_bjk9UjadR4.png)
+![Asset Browser](screenshots/godot-memory_4FHtSf2sYA.png)
+![Toolbox](screenshots/godot-memory_tnm7wd3lby.png)
+![Diary](screenshots/godot-memory_rZ0vY7Sn9f.png)
+![Explorer](screenshots/explorer_Hmd9lSMZ0p.gif)
+![Settings](screenshots/godot-memory_Wfa2Fv6NFt.png)
 
 ## Features
 
