@@ -154,6 +154,7 @@
   "diary.name_placeholder": "Diary name",
   "diary.desc": "Description",
   "diary.write": "Write",
+  "diary.saved": "Diary saved",
   "diary.write_today": "+ Today",
   "diary.save": "Save",
   "diary.placeholder": "Write your diary entry...",
@@ -163,6 +164,8 @@
   "diary.select_date": "Select a date",
   "diary.sort_newest": "Newest first",
   "diary.sort_oldest": "Oldest first",
+  "diary.collapse_sidebar": "Collapse sidebar",
+  "diary.expand_sidebar": "Expand sidebar",
 
   "setting.title": "Setting",
   "setting.theme": "Theme",

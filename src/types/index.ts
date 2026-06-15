@@ -137,6 +137,10 @@ export interface Settings {
   last_ball_x?: number;
   last_ball_y?: number;
   last_snap_edge: SnapEdge;
+  diary_sidebar_collapsed: boolean;
+  diary_selected_id: string;
+  diary_selected_date: string;
+  diary_cursor_pos: number;
 }
 
 // Constants matching GDScript enums

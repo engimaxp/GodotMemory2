@@ -354,10 +354,105 @@ describe('Save Button Disabled State Logic', () => {
     const saving = false;
     const name = '   ';
     const dir = 'C:/test.exe';
-    // The code uses !name which is falsy for strings with spaces
-    // So the button would be disabled
     const disabled = saving || !name || !dir;
-    expect(disabled).toBe(false); // !name is false for '   '
-    // NOTE: This is a potential UX issue — whitespace-only names pass validation
+    expect(disabled).toBe(false);
+  });
+});
+
+// ───────────────────────────────────────────────────
+// Toast Notification Tests
+// ───────────────────────────────────────────────────
+
+describe('Toast Notification', () => {
+  it('should render toast message when showToast is called', async () => {
+    const { ToastProvider, useToast } = await import('../components/Toast');
+    let showToastFn: (msg: string) => void = () => {};
+
+    function TestHarness() {
+      const { showToast } = useToast();
+      React.useEffect(() => { showToastFn = showToast; }, [showToast]);
+      return null;
+    }
+
+    render(
+      <div id="toast-root">
+        <ToastProvider>
+          <TestHarness />
+        </ToastProvider>
+      </div>
+    );
+
+    act(() => { showToastFn('日记已保存'); });
+
+    await waitFor(() => {
+      expect(screen.getByText('日记已保存')).toBeTruthy();
+    });
+  });
+
+  it('should apply toast--visible class when message is shown', async () => {
+    const { ToastProvider, useToast } = await import('../components/Toast');
+    let showToastFn: (msg: string) => void = () => {};
+
+    function TestHarness() {
+      const { showToast } = useToast();
+      React.useEffect(() => { showToastFn = showToast; }, [showToast]);
+      return null;
+    }
+
+    const { container } = render(
+      <ToastProvider>
+        <TestHarness />
+      </ToastProvider>
+    );
+
+    const toastEl = container.querySelector('.toast');
+    expect(toastEl?.className).not.toContain('toast--visible');
+
+    act(() => { showToastFn('Visible'); });
+
+    await waitFor(() => {
+      expect(toastEl?.className).toContain('toast--visible');
+      expect(screen.getByText('Visible')).toBeTruthy();
+    });
+  });
+});
+
+// ───────────────────────────────────────────────────
+// Diary Save + Dirty State Tests
+// ───────────────────────────────────────────────────
+
+describe('Diary Save Logic', () => {
+  it('should call dbSaveDiaryDetail with correct params', async () => {
+    const { dbSaveDiaryDetail } = await import('../bridge');
+    const diary_id = 'diary-1';
+    const create_date = '2026-06-15';
+    const content = 'Today I worked on the toast feature...';
+
+    vi.mocked(invoke).mockResolvedValue('ok');
+    await dbSaveDiaryDetail({ diary_id, create_date, content });
+
+    expect(invoke).toHaveBeenCalledWith('db_save_diary_detail', {
+      detail: { diary_id, create_date, content },
+    });
+  });
+
+  it('should return showToast callback from context', async () => {
+    const { useToast } = await import('../components/Toast');
+    const { ToastProvider } = await import('../components/Toast');
+    let captured: ((msg: string) => void) | null = null;
+
+    function Harness() {
+      const { showToast } = useToast();
+      captured = showToast;
+      return null;
+    }
+
+    render(
+      <ToastProvider>
+        <Harness />
+      </ToastProvider>
+    );
+
+    expect(captured).toBeInstanceOf(Function);
   });
 });

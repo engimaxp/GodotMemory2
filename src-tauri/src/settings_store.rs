@@ -27,6 +27,14 @@ pub struct Settings {
     pub last_ball_y: Option<i64>,
     #[serde(default = "default_edge")]
     pub last_snap_edge: String,
+    #[serde(default)]
+    pub diary_sidebar_collapsed: bool,
+    #[serde(default)]
+    pub diary_selected_id: String,
+    #[serde(default)]
+    pub diary_selected_date: String,
+    #[serde(default)]
+    pub diary_cursor_pos: i64,
 }
 
 fn default_language() -> String { "zh_CN".to_string() }
@@ -50,6 +58,10 @@ impl Default for Settings {
             last_ball_x: None,
             last_ball_y: None,
             last_snap_edge: default_edge(),
+            diary_sidebar_collapsed: false,
+            diary_selected_id: String::new(),
+            diary_selected_date: String::new(),
+            diary_cursor_pos: 0,
         }
     }
 }

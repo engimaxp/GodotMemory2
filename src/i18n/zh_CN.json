@@ -153,6 +153,7 @@
   "diary.name_placeholder": "日志名称",
   "diary.desc": "描述",
   "diary.write": "写日志",
+  "diary.saved": "日记已保存",
   "diary.write_today": "+ 今天",
   "diary.save": "保存",
   "diary.placeholder": "在这里写日志...",
@@ -162,6 +163,8 @@
   "diary.select_date": "选择一个日期",
   "diary.sort_newest": "最新优先",
   "diary.sort_oldest": "最早优先",
+  "diary.collapse_sidebar": "收起侧栏",
+  "diary.expand_sidebar": "展开侧栏",
 
   "setting.title": "设置",
   "setting.theme": "主题",

@@ -35,8 +35,10 @@
 .btn { padding: 6px 14px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 150ms ease; display: flex; align-items: center; gap: 4px; }
 .btn-primary { background: var(--accent-blue); color: white; }
 .btn-primary:hover { background: var(--accent-blue-hover); }
+.btn-primary:disabled { background: var(--bg-secondary); color: var(--ink-faint); cursor: default; }
 .btn-secondary { background: var(--bg-secondary); color: var(--ink-soft); border: 1px solid var(--border-color); }
 .btn-secondary:hover { background: var(--bg-hover); color: var(--ink-strong); }
+.btn-secondary:disabled { background: var(--bg-secondary); color: var(--ink-faint); cursor: default; opacity: 0.6; }
 .btn-small { padding: 4px 10px; font-size: 12px; }
 
 .modal-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-overlay); z-index: 5000; animation: fadeIn 150ms ease; }
