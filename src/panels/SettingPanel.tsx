@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { Settings, Tag } from '../types';
 import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
+import { IslandIcon } from '../components/island-icons';
 
 interface SettingPanelProps {
   settings: Settings | null;
@@ -182,7 +183,7 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
                     <span className="text-xs">{tag.name}</span>
                     <ColorSwatch color={"#" + tag.color} onChange={c => handleColorChange(tag, c.replace("#", ""))} />
                     <button className="tag-chip-delete" onClick={() => handleDeleteTag(tag)}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      <IslandIcon name="Trash" size={14} />
                     </button>
                   </div>
                 ))}

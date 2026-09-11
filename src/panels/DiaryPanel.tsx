@@ -4,6 +4,7 @@ import * as bridge from '../bridge';
 import { useOnce } from '../hooks/usePanelManager';
 import { useI18n } from '../i18n';
 import { useToast } from '../components/Toast';
+import { IslandIcon } from '../components/island-icons';
 
 function todayStr() {
   const d = new Date();
@@ -282,11 +283,11 @@ const DiaryPanel: React.FC = () => {
         )}
       </div>
       <button
-        className="btn btn-primary btn-small"
+        className="diary-toggle-btn"
         onClick={toggleSidebar}
         title={t("diary.expand_sidebar")}
       >
-        ❯
+        <IslandIcon name="Book" size={20} />
       </button>
     </div>
   ) : (
@@ -294,7 +295,7 @@ const DiaryPanel: React.FC = () => {
       <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--animal-text-muted)' }}>{t("diary.list_header")}</span>
-          <button className="btn btn-primary btn-small" onClick={() => setShowNew(true)} title={t("diary.new")}>+</button>
+          <button className="btn btn-primary btn-small" onClick={() => setShowNew(true)} title={t("diary.new")}><IslandIcon name="Plus" size={16} /></button>
         </div>
         {diaries.map(d => (
           <button
@@ -315,6 +316,7 @@ const DiaryPanel: React.FC = () => {
         ))}
         {diaries.length === 0 && (
           <div className="empty-state" style={{ padding: 20 }}>
+            <IslandIcon name="Book" size={44} />
             <p>{t("diary.no_diaries")}</p>
           </div>
         )}
@@ -328,8 +330,7 @@ const DiaryPanel: React.FC = () => {
                 onClick={() => setAscending(v => !v)}
                 title={ascending ? t("diary.sort_newest") : t("diary.sort_oldest")}
               >
-                {ascending ? '↑' : '↓'}
-              </button>
+                {ascending ? '↑' : '↓'}              </button>
               <span className="panel-count">{details.length}</span>
               <button className="btn btn-primary btn-small" style={{ marginLeft: 'auto' }} onClick={writeToday}>
                 {t("diary.write_today")}
@@ -338,6 +339,7 @@ const DiaryPanel: React.FC = () => {
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {monthGroups.length === 0 && (
                 <div className="empty-state">
+                  <IslandIcon name="Calendar" size={44} />
                   <p>{t("diary.no_entries")}</p>
                 </div>
               )}
@@ -369,16 +371,17 @@ const DiaryPanel: React.FC = () => {
         )}
         {!selectedDiary && (
           <div className="empty-state" style={{ flex: 1 }}>
+            <IslandIcon name="Book" size={52} />
             <p>{t("diary.select_diary")}</p>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
           <button
-            className="btn btn-primary btn-small"
+            className="diary-toggle-btn"
             onClick={toggleSidebar}
             title={t("diary.collapse_sidebar")}
           >
-            ❮
+            <IslandIcon name="Sun" size={20} />
           </button>
         </div>
       </div>
@@ -409,6 +412,7 @@ const DiaryPanel: React.FC = () => {
         )}
         {selectedDiary && !selectedDetail && (
           <div className="empty-state">
+            <IslandIcon name="Calendar" size={52} />
             <p>{t("diary.select_date")}</p>
           </div>
         )}
@@ -419,7 +423,7 @@ const DiaryPanel: React.FC = () => {
           <div className="modal modal--blob" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
             <div className="modal-header">
               <span className="modal-title">{t("diary.new")}</span>
-              <button className="modal-close" onClick={() => setShowNew(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowNew(false)}><IslandIcon name="Close" size={22} /></button>
             </div>
             <div className="modal-body">
               <div className="form-group">

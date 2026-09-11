@@ -4,6 +4,32 @@
    pills with a yellow focus glow; modals are SVG blobs.
    ========================================================================= */
 
+/* ─── Island icons (animal-island-ui artwork) ─────────────────────────── */
+.island-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+  vertical-align: middle;
+}
+.island-icon-svg { width: 100%; height: 100%; display: block; }
+/* optional gentle bounce on interactive parents */
+.item-btn:hover .island-icon-svg,
+.sidebar-btn:hover .island-icon-svg,
+.screenshot-toggle-btn:hover .island-icon-svg { animation: island-icon-bounce 0.3s ease-in-out forwards; }
+@keyframes island-icon-bounce {
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.18) rotate(-6deg); }
+  100% { transform: scale(1.08) rotate(-4deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .item-btn:hover .island-icon-svg,
+  .sidebar-btn:hover .island-icon-svg,
+  .screenshot-toggle-btn:hover .island-icon-svg { animation: none; }
+}
+
+/* ─── Panel kit ──────────────────────────────────────────────────────── */
 .panel-container { display: flex; flex-direction: column; height: 100%; gap: 10px; font-family: var(--animal-font); }
 
 /* ─── Header / search ────────────────────────────────────────────────── */
@@ -329,13 +355,7 @@
   text-align: center;
 }
 .empty-state p { font-size: 13px; font-weight: 600; }
-.empty-state::before {
-  content: '';
-  width: 46px; height: 46px;
-  border-radius: 50%;
-  border: 3px dashed var(--animal-border-light);
-  background: rgba(196, 184, 158, 0.12);
-}
+.empty-state .island-icon { opacity: 0.85; animation: animal-bob 3.2s ease-in-out infinite; }
 
 /* ─── Diary ──────────────────────────────────────────────────────────── */
 .diary-sort-btn {
@@ -349,6 +369,22 @@
   transition: all 0.15s var(--animal-ease);
 }
 .diary-sort-btn:hover { border-color: var(--animal-primary); color: var(--animal-primary-active); transform: translateY(-1px); }
+
+/* Sidebar collapse/expand toggle — a round island button carrying an icon */
+.diary-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  border: 2px solid var(--animal-border-light);
+  border-radius: 50%;
+  background: var(--animal-bg-input);
+  color: var(--animal-text-body);
+  cursor: pointer;
+  box-shadow: 0 3px 0 0 var(--animal-shadow-input);
+  transition: all 0.2s var(--animal-ease);
+  flex-shrink: 0;
+}
+.diary-toggle-btn:hover { border-color: var(--animal-primary); transform: translateY(-2px); box-shadow: 0 4px 0 0 var(--animal-shadow-input); }
+.diary-toggle-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 0 var(--animal-shadow-input); }
 
 .diary-month-section { margin-bottom: 12px; }
 .diary-month-header {

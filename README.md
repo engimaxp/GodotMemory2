@@ -41,8 +41,13 @@ Structure and behaviour are unchanged — only the presentation layer (CSS token
 component classes and markup hooks) was replaced.
 
 The style is derived from [animal-island-ui](https://github.com/guokaigdg/animal-island-ui)
-by guokaigdg, used under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
-(design tokens / visual rules only — the library is not a runtime dependency).
+by guokaigdg, used under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
+The components are not a runtime dependency: the design tokens live in
+`src/styles/index.css`, and the icon artwork is vendored into
+`src/components/island-icons.tsx` (derived from the library's
+`src/components/Icon/src/*Icon.tsx`, same 48×48 viewBox and colour palette).
+The application/bubble icon is generated from the library's own `readme-logo.png`
+via `npx tauri icon` — no artwork was drawn for this project.
 
 ## Development
 
