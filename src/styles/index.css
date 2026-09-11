@@ -1,59 +1,175 @@
-/* ─── CSS Variables Design System ─── */
+/* =========================================================================
+   GodotMemory — "Animal Island" design system
+   Visual language ported from https://github.com/guokaigdg/animal-island-ui
+   (CC BY-NC 4.0 — design tokens / visual rules only, no library runtime).
+
+   The seven island laws:
+     1. earth-brown text + mint-teal primary + cream parchment backgrounds
+     2. radius 12px minimum; buttons & inputs are 50px pills
+     3. the pixel-stacked 3D shadow is only for primary buttons / inputs
+     4. rounded type (Nunito + Noto Sans SC), weight never below 400
+     5. motion 0.15–0.35s on cubic-bezier(0.4, 0, 0.2, 1)
+     6. focus is yellow (#ffcc00) for inputs, teal for buttons — never blue
+     7. no right angles, no pure black text, no cold gray backgrounds
+   ========================================================================= */
+
+/* Rounded type is loaded non-blocking via <link> in index.html
+   (Google Fonts: Nunito + Noto Sans SC). System fallbacks below cover offline. */
+
+/* ─── Tokens ─────────────────────────────────────────────────────────── */
 :root,
 [data-theme="light"] {
-  --ink-strong: #1e293b;
-  --ink-soft: #64748b;
-  --ink-faint: #94a3b8;
-  --accent-blue: #3b82f6;
-  --accent-blue-hover: #2563eb;
-  --accent-gold: #f59e0b;
-  --accent-gold-soft: #fbbf24;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --bg-primary: #f8fafc;
-  --bg-secondary: #f1f5f9;
-  --bg-card: #ffffff;
-  --bg-hover: rgba(0, 0, 0, 0.04);
-  --bg-bubble: rgba(15, 23, 42, 0.8);
-  --bg-overlay: rgba(0, 0, 0, 0.4);
-  --bg-popup: #ffffff;
-  --border-color: #e2e8f0;
-  --border-light: #f1f5f9;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.08);
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  /* fonts */
+  --animal-font: Nunito, 'Noto Sans SC', -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-body: var(--animal-font);
+  --font-mono: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+
+  /* primary — mint teal */
+  --animal-primary: #19c8b9;
+  --animal-primary-hover: #3dd4c6;
+  --animal-primary-active: #11a89b;
+  --animal-primary-bg: #e6f9f6;
+
+  /* text — warm brown family (never #000 / #111) */
+  --animal-text: #794f27;
+  --animal-text-body: #725d42;
+  --animal-text-secondary: #9f927d;
+  --animal-text-muted: #8a7b66;
+  --animal-text-disabled: #c4b89e;
+
+  /* backgrounds — cream parchment (never #fafafa / #f5f5f5) */
+  --animal-bg: #f8f8f0;
+  --animal-bg-content: rgb(247, 243, 223);
+  --animal-bg-secondary: #f0e8d8;
+  --animal-bg-disabled: #f0ece2;
+  --animal-bg-input: #fffbe7;
+  --animal-bg-input-dis: #ece8dc;
+  --animal-bg-popup: #fffdf7;
+
+  /* borders */
+  --animal-border: #9f927d;
+  --animal-border-light: #c4b89e;
+  --animal-border-hover: #a89878;
+  --animal-border-soft: #e8dcc8;
+
+  /* radius */
+  --animal-radius-sm: 12px;
+  --animal-radius: 18px;
+  --animal-radius-lg: 24px;
+  --animal-radius-card: 20px;
+  --animal-radius-pill: 50px;
+
+  /* 3D / elevation shadows (warm tone, never cold black) */
+  --animal-shadow-btn: #bdaea0;
+  --animal-shadow-input: #d4c9b4;
+  --animal-shadow-switch: #5a9e1e;
+  --animal-shadow-sm: 0 2px 4px 0 rgba(61, 52, 40, 0.06);
+  --animal-shadow-base: 0 3px 10px 0 rgba(61, 52, 40, 0.1);
+  --animal-shadow-lg: 0 8px 24px 0 rgba(61, 52, 40, 0.14);
+
+  /* focus */
+  --animal-focus-yellow: #ffcc00;
+  --animal-focus-yellow-d: #e0b800;
+  --animal-focus-radio: #f5c31c;
+
+  /* status */
+  --animal-success: #6fba2c;
+  --animal-success-active: #5a9e1e;
+  --animal-warning: #f5c31c;
+  --animal-error: #e05a5a;
+  --animal-error-active: #c94444;
+
+  /* island palette (app tiles / tags / decorations) */
+  --island-pink: #f8a6b2;
+  --island-purple: #b77dee;
+  --island-blue: #889df0;
+  --island-yellow: #f7cd67;
+  --island-orange: #e59266;
+  --island-teal: #82d5bb;
+  --island-green: #8ac68a;
+  --island-red: #fc736d;
+  --island-lime: #d1da49;
+  --island-yellow-green: #ecdf52;
+  --island-brown: #9a835a;
+  --island-peach: #e18c6f;
+
+  /* motion */
+  --animal-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --animal-duration-fast: 0.15s;
+  --animal-duration: 0.25s;
+  --animal-duration-slow: 0.35s;
+
+  /* ── legacy aliases ──
+     Components reference these names; they now resolve to island colours so
+     no component has to know the new palette. */
+  --ink-strong: var(--animal-text);
+  --ink-soft: var(--animal-text-body);
+  --ink-faint: var(--animal-text-muted);
+  --accent-blue: var(--animal-primary);
+  --accent-blue-hover: var(--animal-primary-active);
+  --accent-gold: #f0a92c;
+  --accent-gold-soft: var(--animal-warning);
+  --danger: var(--animal-error);
+  --success: var(--animal-success);
+  --bg-primary: var(--animal-bg);
+  --bg-secondary: var(--animal-bg-secondary);
+  --bg-card: var(--animal-bg-content);
+  --bg-hover: rgba(25, 200, 185, 0.08);
+  --bg-bubble: #19c8b9;
+  --bg-overlay: rgba(92, 74, 54, 0.32);
+  --bg-popup: var(--animal-bg-popup);
+  --border-color: var(--animal-border-light);
+  --border-light: var(--animal-border-soft);
+  --shadow-sm: var(--animal-shadow-sm);
+  --shadow-md: var(--animal-shadow-base);
+  --shadow-lg: var(--animal-shadow-lg);
 }
 
+/* ─── Island night (dimmed parchment, still warm — never cold gray) ──── */
 [data-theme="dark"] {
-  --ink-strong: #f1f5f9;
-  --ink-soft: #94a3b8;
-  --ink-faint: #64748b;
-  --accent-blue: #60a5fa;
-  --accent-blue-hover: #3b82f6;
-  --accent-gold: #fbbf24;
-  --accent-gold-soft: #f59e0b;
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-card: #1e293b;
-  --bg-hover: rgba(255, 255, 255, 0.06);
-  --bg-bubble: rgba(30, 41, 59, 0.9);
-  --bg-overlay: rgba(0, 0, 0, 0.6);
-  --bg-popup: #1e293b;
-  --border-color: #334155;
-  --border-light: #1e293b;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+  --animal-primary: #2fd7c7;
+  --animal-primary-hover: #57e2d5;
+  --animal-primary-active: #19b3a5;
+  --animal-primary-bg: #123c39;
+
+  --animal-text: #f7ecd2;
+  --animal-text-body: #e8d9ba;
+  --animal-text-secondary: #b8a888;
+  --animal-text-muted: #c2b295;
+  --animal-text-disabled: #8d7f66;
+
+  --animal-bg: #2b2418;
+  --animal-bg-content: #3a3222;
+  --animal-bg-secondary: #43392a;
+  --animal-bg-disabled: #4a4133;
+  --animal-bg-input: #3f3626;
+  --animal-bg-input-dis: #37301f;
+  --animal-bg-popup: #40371f;
+
+  --animal-border: #6f5f45;
+  --animal-border-light: #7c6a4d;
+  --animal-border-hover: #94805c;
+  --animal-border-soft: #5a4d36;
+
+  --animal-shadow-btn: #171208;
+  --animal-shadow-input: #241d10;
+  --animal-shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+  --animal-shadow-base: 0 3px 10px 0 rgba(0, 0, 0, 0.38);
+  --animal-shadow-lg: 0 8px 24px 0 rgba(0, 0, 0, 0.45);
+
+  --bg-overlay: rgba(0, 0, 0, 0.55);
+  --bg-hover: rgba(47, 215, 199, 0.12);
 }
 
+/* ─── Reset ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
   width: 100%; height: 100%; overflow: hidden;
-  font-family: var(--font-body); font-size: 14px; line-height: 1.5;
-  color: var(--ink-strong); background: transparent;
+  font-family: var(--animal-font);
+  font-size: 14px; font-weight: 500; line-height: 1.5;
+  letter-spacing: 0.01em;
+  color: var(--animal-text-body); background: transparent;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
 
@@ -63,24 +179,73 @@ html, body {
   -webkit-user-select: none; user-select: none;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+h1, h2, h3, h4, h5, h6 { font-weight: 700; color: var(--animal-text); letter-spacing: 0.02em; }
+strong, b { font-weight: 700; }
+
+/* ─── Scrollbars — chunky island pill, warm brown ─────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.25); }
-[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+::-webkit-scrollbar-thumb {
+  background: var(--animal-border-light);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--animal-radius-pill);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--animal-border-hover); background-clip: padding-box; }
 
-[data-tauri-drag-region] { -webkit-app-region: drag; }
-[data-no-drag="true"] { -webkit-app-region: no-drag; }
+/* ─── Shared island primitives ───────────────────────────────────────── */
 
+/* Polka-dot parchment wallpaper (pure CSS, no image assets) */
+.animal-bg-dots {
+  background:
+    radial-gradient(circle, rgba(196, 184, 158, 0.15) 1.5px, transparent 1.5px) 0 0 / 28px 28px,
+    radial-gradient(circle, rgba(196, 184, 158, 0.1) 1px, transparent 1px) 7px 7px / 14px 14px,
+    var(--animal-bg-content);
+}
+[data-theme="dark"] .animal-bg-dots {
+  background:
+    radial-gradient(circle, rgba(240, 220, 180, 0.08) 1.5px, transparent 1.5px) 0 0 / 28px 28px,
+    radial-gradient(circle, rgba(240, 220, 180, 0.05) 1px, transparent 1px) 7px 7px / 14px 14px,
+    var(--animal-bg-content);
+}
+
+/* Dashed brown divider */
+.animal-divider {
+  width: 100%; height: 12px; flex-shrink: 0;
+  background: linear-gradient(to right, var(--animal-border-light) 50%, transparent 50%) center / 12px 2px repeat-x;
+}
+
+/* Soft elevation card (no heavy shadow — depth comes from border) */
+.animal-card {
+  border-radius: var(--animal-radius-card);
+  background: var(--animal-bg-content);
+  color: var(--animal-text-body);
+  padding: 16px 24px;
+  font-weight: 500;
+  transition: all var(--animal-duration) var(--animal-ease);
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes animal-zoom-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes animal-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes animal-ac-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes animal-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes animal-spin { to { transform: rotate(360deg); } }
 
+/* ─── Toast — rounded island bubble ──────────────────────────────────── */
 .toast {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: var(--ink-strong); color: var(--bg-primary);
-  padding: 8px 20px; border-radius: 8px; font-size: 13px;
-  z-index: 9999; opacity: 0; transition: opacity 0.3s;
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(8px);
+  background: var(--animal-bg-content);
+  color: var(--animal-text);
+  border: 2px solid var(--animal-border-light);
+  padding: 10px 22px;
+  border-radius: var(--animal-radius-pill);
+  font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+  box-shadow: 0 6px 0 0 var(--animal-shadow-btn);
+  z-index: 9999; opacity: 0; transition: opacity 0.25s var(--animal-ease), transform 0.25s var(--animal-ease);
   pointer-events: none; white-space: nowrap;
+  max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis;
 }
-.toast--visible { opacity: 1; }
+.toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }

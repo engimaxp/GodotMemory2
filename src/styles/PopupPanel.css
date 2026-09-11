@@ -1,16 +1,175 @@
-.popup { position: absolute; inset: 0; display: flex; background: var(--bg-popup); border-radius: 0; overflow: hidden; animation: fadeIn 150ms ease; }
-.popup--snap-right { border-radius: 12px 0 0 12px; }
-.popup--snap-left { border-radius: 0 12px 12px 0; }
-.popup--snap-top { border-radius: 0 0 12px 12px; }
-.popup--snap-bottom { border-radius: 12px 12px 0 0; }
-.popup-sidebar { width: 56px; background: var(--bg-secondary); display: flex; flex-direction: column; justify-content: space-between; padding: 8px 0; flex-shrink: 0; border-right: 1px solid var(--border-color); }
-.sidebar-icons { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.sidebar-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: var(--ink-faint); cursor: pointer; transition: all 150ms ease; }
-.sidebar-btn:hover { background: var(--bg-hover); color: var(--ink-strong); }
-.sidebar-btn.active { background: var(--accent-blue); color: white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
-.sidebar-bottom { display: flex; flex-direction: column; align-items: center; }
-.close-btn { color: var(--ink-faint); }
+/* =========================================================================
+   Popup panel shell — a floating island: cream parchment wall, wooden left
+   dock with colourful app tiles, swallow-tail ribbon title.
+   ========================================================================= */
+
+.popup {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  background: var(--animal-bg-content);
+  background-image:
+    radial-gradient(circle, rgba(196, 184, 158, 0.16) 1.5px, transparent 1.5px),
+    radial-gradient(circle, rgba(196, 184, 158, 0.1) 1px, transparent 1px);
+  background-size: 28px 28px, 14px 14px;
+  background-position: 0 0, 7px 7px;
+  border-radius: 0;
+  border: 3px solid var(--animal-border-light);
+  overflow: hidden;
+  animation: animal-zoom-in 0.25s var(--animal-ease);
+  font-family: var(--animal-font);
+  color: var(--animal-text-body);
+}
+[data-theme="dark"] .popup {
+  background-image:
+    radial-gradient(circle, rgba(240, 220, 180, 0.08) 1.5px, transparent 1.5px),
+    radial-gradient(circle, rgba(240, 220, 180, 0.05) 1px, transparent 1px);
+}
+
+/* Rounded only on the content-facing edge, like the island drawer */
+.popup--snap-right { border-radius: 24px 0 0 24px; border-right: none; }
+.popup--snap-left { border-radius: 0 24px 24px 0; border-left: none; }
+.popup--snap-top { border-radius: 0 0 24px 24px; border-top: none; }
+.popup--snap-bottom { border-radius: 24px 24px 0 0; border-bottom: none; }
+
+/* ─── Left dock ──────────────────────────────────────────────────────── */
+.popup-sidebar {
+  width: 62px;
+  background: var(--animal-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px 0;
+  flex-shrink: 0;
+  border-right: 2px solid var(--animal-border-light);
+}
+.sidebar-icons { display: flex; flex-direction: column; align-items: center; gap: 10px; overflow-y: auto; }
+.sidebar-bottom { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 8px; border-top: 2px dashed var(--animal-border-light); margin: 0 8px; }
+
+.sidebar-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(114, 93, 66, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  color: #725d42;
+  cursor: pointer;
+  box-shadow: 0 3px 0 0 var(--animal-shadow-input);
+  transition: all 0.2s var(--animal-ease);
+}
+[data-theme="dark"] .sidebar-btn { background: rgba(255, 255, 255, 0.08); color: var(--animal-text); }
+.sidebar-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--animal-primary);
+  color: var(--animal-primary-active);
+  box-shadow: 0 5px 0 0 var(--animal-shadow-input);
+}
+.sidebar-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 0 var(--animal-shadow-input); }
+
+/* Island app tiles — one pastel hue per panel, like the home screen */
+.sidebar-btn[data-panel="Engine"] { background: rgba(247, 205, 103, 0.55); }
+.sidebar-btn[data-panel="Proj"] { background: rgba(136, 157, 240, 0.5); }
+.sidebar-btn[data-panel="Asset"] { background: rgba(130, 213, 187, 0.55); }
+.sidebar-btn[data-panel="Tool"] { background: rgba(229, 146, 102, 0.5); }
+.sidebar-btn[data-panel="Diary"] { background: rgba(183, 125, 238, 0.45); }
+.sidebar-btn[data-panel="Setting"] { background: rgba(138, 198, 138, 0.5); }
+[data-theme="dark"] .sidebar-btn[data-panel="Engine"] { background: rgba(247, 205, 103, 0.3); }
+[data-theme="dark"] .sidebar-btn[data-panel="Proj"] { background: rgba(136, 157, 240, 0.3); }
+[data-theme="dark"] .sidebar-btn[data-panel="Asset"] { background: rgba(130, 213, 187, 0.3); }
+[data-theme="dark"] .sidebar-btn[data-panel="Tool"] { background: rgba(229, 146, 102, 0.3); }
+[data-theme="dark"] .sidebar-btn[data-panel="Diary"] { background: rgba(183, 125, 238, 0.3); }
+[data-theme="dark"] .sidebar-btn[data-panel="Setting"] { background: rgba(138, 198, 138, 0.3); }
+
+.sidebar-btn.active {
+  background: var(--animal-primary);
+  border-color: var(--animal-primary-active);
+  color: #fffbe7;
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 5px 0 0 var(--animal-primary-active);
+}
+.sidebar-btn.active::after {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--animal-focus-yellow);
+  border: 2px solid var(--animal-focus-yellow-d);
+  transform: translateY(-50%);
+}
+
+.close-btn { background: rgba(252, 115, 109, 0.28); color: #c94444; }
+.close-btn:hover { background: var(--animal-error); border-color: var(--animal-error-active); color: #fff; }
+[data-theme="dark"] .close-btn { color: #ffc0bd; }
+
+/* ─── Content column ─────────────────────────────────────────────────── */
 .popup-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.popup-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
-.popup-title { font-size: 15px; font-weight: 600; color: var(--ink-strong); }
-.popup-body { flex: 1; overflow-y: auto; padding: 12px; }
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 16px;
+  flex-shrink: 0;
+}
+
+/* Swallow-tail ribbon title (island <Title> variant) */
+.popup-title {
+  position: relative;
+  z-index: 0;
+  display: inline-block;
+  padding: 5px 26px 6px;
+  font-family: var(--animal-font);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fffbe7;
+  background: linear-gradient(160deg, #3dd4c6 0%, #19c8b9 100%);
+  border-radius: 8px;
+  text-shadow: 0 1px 0 rgba(17, 120, 110, 0.55);
+  filter: drop-shadow(0 2px 0 rgba(61, 52, 40, 0.14));
+}
+.popup-title::before,
+.popup-title::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 16px;
+  background: #11a89b;
+  z-index: -1;
+}
+.popup-title::before { left: -11px; clip-path: polygon(100% 0%, 100% 100%, 0% 100%, 34% 50%, 0% 0%); }
+.popup-title::after { right: -11px; clip-path: polygon(0% 0%, 100% 0%, 66% 50%, 100% 100%, 0% 100%); }
+
+.popup-body { flex: 1; overflow-y: auto; padding: 0 16px 16px; min-height: 0; }
+
+/* ─── Modal (island blob, SVG clip-path) ─────────────────────────────── */
+.modal-blob-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* =========================================================================
+   Compact island control kit — the pieces every panel reuses.
+   Kept here (not in a panel) so the shell owns the shared look.
+   ========================================================================= */
+
+/* Buttons: pill, 2px border, teal hover; primary gets the 3D game shadow */
+.btn { font-family: var(--animal-font); }
+
+/* Section header used inside panels (yellow ribbon tab) */
+.animal-section-title {
+  display: inline-block;
+  padding: 3px 16px 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #725d42;
+  background: linear-gradient(160deg, #ffe08a 0%, #f7cd67 100%);
+  border-radius: 8px;
+  box-shadow: 0 2px 0 0 #d4a030;
+}

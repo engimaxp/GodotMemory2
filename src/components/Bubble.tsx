@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useI18n } from '../i18n';
 import '../styles/Bubble.css';
 
 interface BubbleProps {
@@ -14,6 +15,7 @@ export const Bubble: React.FC<BubbleProps> = ({
   opacity = 0.85, size = 110,
 }) => {
   const [showFallback, setShowFallback] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div
@@ -22,7 +24,7 @@ export const Bubble: React.FC<BubbleProps> = ({
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
-      title="点击展开 / 按住拖动"
+      title={t("bubble.click_hint")}
     >
       <div className="bubble-ring" />
       <div className="bubble-icon">

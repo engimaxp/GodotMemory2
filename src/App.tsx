@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { Bubble } from './components/Bubble';
@@ -41,7 +41,9 @@ function MainWindow() {
 
         // Apply theme from system preference
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        if (!document.documentElement.dataset.themeExplicit) {
+          document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        }
 
         setInitialized(true);
       } catch (e) {
@@ -58,6 +60,20 @@ function MainWindow() {
       setWindowMode(event.payload as WindowMode);
     });
     return () => { unlisten.then(fn => fn()); };
+  }, []);
+
+  // Follow the OS colour scheme (island palette has a dimmed parchment night mode)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      // Respect an explicit choice made in the Setting panel
+      const explicit = document.documentElement.dataset.themeExplicit;
+      if (explicit) return;
+      document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
   }, []);
 
   // Listen for panel switch events from child panels
@@ -200,7 +216,7 @@ function MainWindow() {
 // Settings window component (opened separately)
 function SettingsWindow() {
   return (
-    <div className="w-full h-full p-4 text-sm" style={{ color: 'var(--color-ink-soft)' }}>
+    <div className="w-full h-full p-4 text-sm" style={{ color: 'var(--animal-text-muted)' }}>
       <p>Settings are shown in the main panel under Setting tab.</p>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ImageRecord } from '../types';
 import * as bridge from '../bridge';
+import { useI18n } from '../i18n';
 
 interface ManagedImage {
   record: ImageRecord;
@@ -13,6 +14,7 @@ interface ImageManagerProps {
 }
 
 const ImageManager: React.FC<ImageManagerProps> = ({ initialImages, onChange }) => {
+  const { t } = useI18n();
   const [images, setImages] = useState<ManagedImage[]>([]);
   const [adding, setAdding] = useState(false);
 
@@ -77,7 +79,7 @@ const ImageManager: React.FC<ImageManagerProps> = ({ initialImages, onChange }) 
           {images.map(img => (
             <div key={img.record.id} className="image-manager-item">
               <img src={img.src} alt="" draggable={false} />
-              <button className="image-manager-remove" onClick={() => handleRemove(img.record.id)} title="删除">
+              <button className="image-manager-remove" onClick={() => handleRemove(img.record.id)} title={t("Delete")}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -87,7 +89,7 @@ const ImageManager: React.FC<ImageManagerProps> = ({ initialImages, onChange }) 
         </div>
       )}
       <button className="btn btn-secondary btn-small" onClick={handleAdd} disabled={adding}>
-        {adding ? "..." : "+ 添加截图"}
+        {adding ? "..." : `+ ${t("common.add_screenshot")}`}
       </button>
     </div>
   );

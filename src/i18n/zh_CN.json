@@ -198,6 +198,7 @@
   "common.refresh": "刷新",
   "common.description": "描述",
   "common.screenshots": "截图",
+  "common.add_screenshot": "添加截图",
 
   "tag.add": "添加标签...",
   "tag.add_label": "添加",
@@ -213,5 +214,6 @@
   "import.success": "成功导入 {engines} 引擎, {projs} 项目, {assets} 资产, {tools} 工具, {tags} 标签",
   "import.error": "导入失败： {error}",
 
-  "bubble.click_hint": "点击展开 / 按住拖动"
+  "bubble.click_hint": "点击展开 / 按住拖动",
+  "common.collapse": "收起"
 }

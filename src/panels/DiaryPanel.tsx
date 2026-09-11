@@ -267,16 +267,16 @@ const DiaryPanel: React.FC = () => {
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center', flex: 1 }}>
         {selectedDiary ? (
-          <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--accent-blue)', lineHeight: 1.2, writingMode: 'vertical-lr' }}>
+          <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--animal-primary)', lineHeight: 1.2, writingMode: 'vertical-lr' }}>
             {selectedDiary.name}
           </div>
         ) : (
-          <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--ink-soft)', lineHeight: 1.2, writingMode: 'vertical-lr' }}>
+          <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--animal-text-muted)', lineHeight: 1.2, writingMode: 'vertical-lr' }}>
             {t("diary.no_diaries")}
           </div>
         )}
         {selectedDetail && (
-          <div style={{ fontSize: 9, fontStyle: 'italic', color: 'var(--ink-soft)', lineHeight: 1.2, writingMode: 'vertical-lr' }}>
+          <div style={{ fontSize: 9, fontStyle: 'italic', color: 'var(--animal-text-muted)', lineHeight: 1.2, writingMode: 'vertical-lr' }}>
             {selectedDetail.create_date}
           </div>
         )}
@@ -293,7 +293,7 @@ const DiaryPanel: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
       <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)' }}>{t("diary.list_header")}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--animal-text-muted)' }}>{t("diary.list_header")}</span>
           <button className="btn btn-primary btn-small" onClick={() => setShowNew(true)} title={t("diary.new")}>+</button>
         </div>
         {diaries.map(d => (
@@ -302,7 +302,8 @@ const DiaryPanel: React.FC = () => {
             className="item-row"
             style={{
               padding: '6px 8px',
-              border: selectedDiary?.id === d.id ? '1px solid var(--accent-blue)' : undefined,
+              border: selectedDiary?.id === d.id ? '2px solid var(--animal-primary)' : undefined,
+              background: selectedDiary?.id === d.id ? 'var(--animal-primary-bg)' : undefined,
             }}
             onClick={() => selectDiary(d)}
           >
@@ -392,7 +393,7 @@ const DiaryPanel: React.FC = () => {
         {selectedDetail && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{selectedDetail.create_date}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--animal-text-muted)' }}>{selectedDetail.create_date}</span>
               <button className="btn btn-primary btn-small" onClick={saveContent} disabled={!dirty}>{t("diary.save")}</button>
             </div>
             <textarea
@@ -415,7 +416,7 @@ const DiaryPanel: React.FC = () => {
 
       {showNew && (
         <div className="modal-overlay" onClick={() => setShowNew(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+          <div className="modal modal--blob" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
             <div className="modal-header">
               <span className="modal-title">{t("diary.new")}</span>
               <button className="modal-close" onClick={() => setShowNew(false)}>×</button>

@@ -1,29 +1,91 @@
+/* =========================================================================
+   Floating island orb — the collapsed GodotMemory bubble.
+   A warm coin floating on a cream ring; teal only appears on interaction.
+   ========================================================================= */
+
 .bubble {
   position: absolute;
   top: 50%;
   left: 50%;
   translate: -50% -50%;
   border-radius: 50%;
-  background: var(--bg-bubble);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55), transparent 46%),
+    radial-gradient(circle at 70% 78%, rgba(154, 131, 90, 0.25), transparent 55%),
+    linear-gradient(160deg, #f7cd67 0%, #e59266 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 1000;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 3px solid #c4b89e;
+  box-shadow:
+    0 8px 0 0 #bdaea0,
+    0 14px 26px 0 rgba(61, 52, 40, 0.28);
+  transition: transform 0.2s var(--animal-ease), box-shadow 0.2s var(--animal-ease);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
-.bubble:hover { transform: scale(1.05); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
-.bubble:active { transform: scale(0.95); }
+.bubble:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow:
+    0 10px 0 0 #bdaea0,
+    0 20px 32px 0 rgba(61, 52, 40, 0.3);
+}
+.bubble:active {
+  transform: translateY(4px) scale(0.97);
+  box-shadow:
+    0 2px 0 0 #bdaea0,
+    0 6px 14px 0 rgba(61, 52, 40, 0.3);
+}
+
+/* Rotating mint ring — the "selected app" halo */
 .bubble-ring {
-  position: absolute; inset: -3px; border-radius: 50%;
-  border: 2px solid transparent;
-  background: conic-gradient(var(--accent-gold) 0deg, var(--accent-blue) 90deg, var(--success) 180deg, var(--accent-gold) 360deg) border-box;
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background: conic-gradient(
+    from 0deg,
+    #19c8b9 0deg,
+    #8ac68a 90deg,
+    #f7cd67 180deg,
+    #889df0 270deg,
+    #19c8b9 360deg
+  ) border-box;
   -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: 0.5;
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0.75;
+  animation: bubble-spin 9s linear infinite;
+  pointer-events: none;
 }
-.bubble-icon { display: flex; align-items: center; justify-content: center; color: white; }
+
+/* polka-dot "grass" badge behind the icon */
+.bubble::after {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.35) 1.5px, transparent 1.5px) 0 0 / 16px 16px,
+    rgba(255, 251, 231, 0.35);
+  pointer-events: none;
+}
+
+.bubble-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #794f27;
+  filter: drop-shadow(0 3px 0 rgba(61, 52, 40, 0.22));
+}
+
+@keyframes bubble-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-ring { animation: none; }
+}

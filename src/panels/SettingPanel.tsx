@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Settings, Tag } from '../types';
 import * as bridge from '../bridge';
 import { useI18n } from '../i18n';
@@ -41,6 +41,7 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
+    document.documentElement.dataset.themeExplicit = next;
     document.documentElement.setAttribute("data-theme", next);
   };
 
@@ -153,7 +154,7 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
           <div className={"switch " + (settings.remember_position ? "switch--active" : "")} onClick={() => onUpdateSettings({ remember_position: !settings.remember_position })}><div className="switch-thumb" /></div>
         </div>
 
-        <div className="settings-divider" style={{ height: 1, background: "var(--border-color)", margin: "4px 0" }} />
+        <div className="animal-divider" />
 
         <div className="setting-item setting-item--column">
           <div className="setting-info"><span className="setting-label">{t("import.title")}</span><span className="setting-desc">{t("import.desc")}</span></div>
@@ -161,23 +162,23 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
             <input className="form-input" value={OLD_DB_PATH} readOnly style={{ flex: 1, fontSize: 11, opacity: 0.7 }} />
           </div>
           <button className="btn btn-primary" onClick={handleImport} disabled={importing} style={{ width: "100%", marginTop: 6 }}>
-            {importing ? "导入中..." : t("import.button")}
+            {importing ? t("common.loading") : t("import.button")}
           </button>
-          {importResult && <div style={{ fontSize: 12, color: "var(--success)", marginTop: 6, padding: "6px 8px", background: "rgba(34,197,94,0.08)", borderRadius: 6 }}>{importResult}</div>}
-          {importError && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6, padding: "6px 8px", background: "rgba(239,68,68,0.08)", borderRadius: 6 }}>{importError}</div>}
+          {importResult && <div className="setting-notice setting-notice--ok">{importResult}</div>}
+          {importError && <div className="setting-notice setting-notice--err">{importError}</div>}
         </div>
 
         {/* Tag Management */}
-        <div className="h-px" style={{ background: "var(--border-color)" }} />
+        <div className="animal-divider" />
         <div className="setting-item setting-item--column">
           <div className="setting-info"><span className="setting-label">{t("settings.fast_tags_management")}</span></div>
           {allTypeTags.map(group => (
             <div key={group.type} style={{ width: "100%" }}>
-              <div className="setting-label" style={{ marginTop: 8, marginBottom: 4, fontSize: 11, opacity: 0.7 }}>{t(group.type)}</div>
+              <div className="animal-section-title" style={{ marginTop: 10, marginBottom: 6 }}>{t(group.type)}</div>
               <div className="flex flex-wrap gap-1">
                 {group.tags.map(tag => (
-                  <div key={tag.id} className="tag-chip" style={{ background: "#" + tag.color + "22", color: "#" + tag.color, border: "1px solid #" + tag.color + "44", display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", width: "auto" }}>
-                    <input type="checkbox" checked={tag.is_fast} onChange={() => handleToggleFast(tag)} style={{ width: 12, height: 12, accentColor: "#" + tag.color }} title="Quick tag" />
+                  <div key={tag.id} className="tag-chip" style={{ background: "#" + tag.color + "22", color: "#" + tag.color, border: "1px solid #" + tag.color + "44", display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", width: "auto" }}>
+                    <input type="checkbox" checked={tag.is_fast} onChange={() => handleToggleFast(tag)} title="Quick tag" />
                     <span className="text-xs">{tag.name}</span>
                     <ColorSwatch color={"#" + tag.color} onChange={c => handleColorChange(tag, c.replace("#", ""))} />
                     <button className="tag-chip-delete" onClick={() => handleDeleteTag(tag)}>
@@ -185,7 +186,7 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
                     </button>
                   </div>
                 ))}
-                {group.tags.length === 0 && <span className="text-xs" style={{ color: "var(--ink-faint)" }}>No tags</span>}
+                {group.tags.length === 0 && <span className="text-xs" style={{ color: "var(--animal-text-muted)" }}>No tags</span>}
               </div>
             </div>
           ))}
@@ -196,20 +197,113 @@ const SettingPanel: React.FC<SettingPanelProps> = ({ settings, onUpdateSettings 
 };
 
 const settingStyles = `
-.setting-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; }
-.setting-item--column { flex-direction: column; align-items: flex-start; gap: 4px; }
-.setting-info { display: flex; flex-direction: column; gap: 1px; }
-.setting-label { font-size: 13px; font-weight: 500; color: var(--ink-strong); }
-.setting-desc { font-size: 11px; color: var(--ink-faint); }
-.switch { width: 36px; height: 20px; border-radius: 10px; background: var(--border-color); cursor: pointer; position: relative; transition: background 150ms ease; flex-shrink: 0; }
-.switch--active { background: var(--accent-blue); }
-.switch-thumb { width: 16px; height: 16px; border-radius: 50%; background: white; position: absolute; top: 2px; left: 2px; transition: transform 150ms ease; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-.switch--active .switch-thumb { transform: translateX(16px); }
-.slider { width: 100%; margin-top: 4px; -webkit-appearance: none; height: 4px; border-radius: 2px; background: var(--border-color); outline: none; }
-.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-blue); cursor: pointer; }
-.color-swatch:hover { border-color: var(--accent-blue) !important; }
-.tag-chip-delete { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: none; border-radius: 4px; background: rgba(0,0,0,0.08); color: inherit; cursor: pointer; padding: 0; flex-shrink: 0; transition: background 150ms ease; opacity: 0.5; }
-.tag-chip-delete:hover { background: rgba(239,68,68,0.2); color: var(--danger); opacity: 1; }
+.setting-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--animal-bg-input);
+  border: 2px solid var(--animal-border-soft);
+  border-radius: 18px;
+}
+.setting-item--column { flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; }
+.setting-info { display: flex; flex-direction: column; gap: 2px; }
+.setting-label { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; color: var(--animal-text); }
+.setting-desc { font-size: 11px; font-weight: 500; color: var(--animal-text-muted); }
+
+/* Island switch — flat handle on an inset-shadowed track, no outer shadow */
+.switch {
+  position: relative;
+  min-width: 52px; height: 28px;
+  border: 2.5px solid var(--animal-border-light);
+  border-radius: 50px;
+  background: var(--animal-shadow-input);
+  box-shadow: inset 0 2px 4px rgba(114, 93, 66, 0.15);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.25s var(--animal-ease), border-color 0.25s var(--animal-ease), box-shadow 0.25s var(--animal-ease);
+}
+.switch--active {
+  background: #86d67a;
+  border-color: var(--animal-success);
+  box-shadow: inset 0 2px 4px rgba(90, 158, 30, 0.2);
+}
+.switch-thumb {
+  position: absolute; top: 50%; left: 2px;
+  width: 21px; height: 21px;
+  border: 2.5px solid var(--animal-border-light);
+  border-radius: 50%;
+  background: var(--animal-bg-content);
+  transform: translateY(-50%);
+  transition: left 0.25s var(--animal-ease), border-color 0.25s var(--animal-ease);
+}
+.switch--active .switch-thumb { left: calc(100% - 24px); border-color: var(--animal-success); }
+.switch:focus-visible { outline: 2px solid var(--animal-focus-yellow); outline-offset: 2px; }
+
+/* Slider — cream track, teal handle with a 3D base */
+.slider {
+  width: 100%; margin-top: 6px;
+  -webkit-appearance: none; appearance: none;
+  height: 10px; border-radius: 50px;
+  background: var(--animal-bg-secondary);
+  border: 2px solid var(--animal-border-soft);
+  outline: none;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--animal-primary);
+  border: 2.5px solid var(--animal-primary-active);
+  cursor: pointer;
+  box-shadow: 0 3px 0 0 var(--animal-shadow-btn);
+}
+.slider::-moz-range-thumb {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--animal-primary);
+  border: 2.5px solid var(--animal-primary-active);
+  cursor: pointer;
+}
+
+.color-swatch:hover { border-color: var(--animal-primary) !important; }
+.color-swatch { box-shadow: 0 2px 0 0 var(--animal-shadow-input); }
+
+.tag-chip input[type="checkbox"] {
+  appearance: none;
+  width: 16px; height: 16px;
+  border: 2px solid var(--animal-border-light);
+  border-radius: 50%;
+  background: var(--animal-bg-content);
+  cursor: pointer; position: relative; flex-shrink: 0;
+}
+.tag-chip input[type="checkbox"]:checked { background: var(--animal-primary); border-color: var(--animal-primary-active); }
+.tag-chip input[type="checkbox"]:checked::after {
+  content: ''; position: absolute; left: 4px; top: 1px;
+  width: 4px; height: 8px;
+  border: solid #fffbe7; border-width: 0 2px 2px 0;
+  transform: rotate(42deg);
+}
+
+.tag-chip-delete {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px;
+  border: none; border-radius: 50%;
+  background: rgba(114, 93, 66, 0.14);
+  color: inherit; cursor: pointer; padding: 0; flex-shrink: 0;
+  transition: background 0.15s var(--animal-ease);
+}
+.tag-chip-delete:hover { background: rgba(224, 90, 90, 0.35); color: var(--animal-error); }
+
+/* Status notices */
+.setting-notice {
+  font-size: 12px; font-weight: 700;
+  margin-top: 8px; padding: 8px 14px;
+  border-radius: 14px;
+  border: 2px solid currentColor;
+  width: 100%;
+}
+.setting-notice--ok { color: #5a9e1e; background: rgba(111, 186, 44, 0.12); }
+.setting-notice--err { color: #c94444; background: rgba(224, 90, 90, 0.12); }
+.animal-divider { margin: 4px 0; }
 `;
 
 export const SettingsStyles = () => <style>{settingStyles}</style>;

@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { Tool, Tag, ImageRecord, EntityWithExtras, Page } from '../types';
 import { TagType } from '../types';
 import * as bridge from '../bridge';
@@ -86,7 +86,7 @@ const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, init
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+      <div className="modal modal--blob" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <div className="modal-header">
           <span className="modal-title">{isNew ? t("tool.add") : t("tool.edit")}</span>
           <button className="modal-close" onClick={onClose}>
@@ -128,9 +128,9 @@ const ToolEditModal: React.FC<ToolEditModalProps> = ({ tool, initialTagIds, init
               <button className="btn btn-secondary btn-small" onClick={() => handleAddTag()}>{t("tag.add_label")}</button>
               {/* Auto-complete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <div style={{ position: "absolute", bottom: "100%", left: 0, right: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", marginBottom: 4 }}>
+                <div className="suggest-panel suggest-panel--up">
                   {suggestions.map(tag => (
-                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2 }}
+                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 10px", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color }}
                       onClick={() => handleSelectSuggestion(tag.name)}>
                       {tag.name}
                     </div>
@@ -175,7 +175,7 @@ const ToolRow: React.FC<ToolRowProps> = ({ Tool, showScreenshots, onEdit, onDele
   if (showScreenshots) {
     return (
       <div className="item-row">
-        <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#f59e0b" }}>
+        <div className="item-icon item-icon--sticker" style={{ background: iconSrc ? "transparent" : "#f0a92c" }}>
           {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>T</span>}
         </div>
         <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
@@ -184,7 +184,7 @@ const ToolRow: React.FC<ToolRowProps> = ({ Tool, showScreenshots, onEdit, onDele
         <div className="item-actions">
           <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
             {e.star
-              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f0a92c" stroke="#f0a92c" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
               : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
           </button>
           <button className="item-btn" onClick={onRun} title={t("tool.run")}>
@@ -205,7 +205,7 @@ const ToolRow: React.FC<ToolRowProps> = ({ Tool, showScreenshots, onEdit, onDele
   }
   return (
     <div className="item-row">
-      <div className="item-icon" style={{ background: iconSrc ? "transparent" : "#f59e0b" }}>
+      <div className="item-icon item-icon--sticker" style={{ background: iconSrc ? "transparent" : "#f0a92c" }}>
         {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>T</span>}
       </div>
       <div className="item-info">
@@ -216,7 +216,7 @@ const ToolRow: React.FC<ToolRowProps> = ({ Tool, showScreenshots, onEdit, onDele
       <div className="item-actions">
         <button className="item-btn" onClick={() => onStarToggle(!e.star)} title={e.star ? t("common.unstar") : t("common.star")}>
           {e.star
-            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#f0a92c" stroke="#f0a92c" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
             : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>}
         </button>
         <button className="item-btn" onClick={onRun} title={t("tool.run")}>
@@ -321,7 +321,7 @@ const ToolPanel: React.FC = () => {
 
   return (
     <div className="panel-container">
-      <div className="panel-header" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+      <div className="panel-header panel-toolbar">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input className="panel-search-input" value={search}
             onChange={e => { setSearch(e.target.value); setPage(p => ({ ...p, index: 1 })); }}
@@ -352,11 +352,11 @@ const ToolPanel: React.FC = () => {
                 <input className="tag-input" value={tagSearchText}
                   onChange={e => setTagSearchText(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
-                  placeholder={t("tool.search_tags_placeholder")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
+                  placeholder={t("tool.search_tags_placeholder")} />
                 {showTagSuggestions && tagSuggestions.length > 0 && (
-                  <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
+                  <div className="suggest-panel suggest-panel--down">
                     {tagSuggestions.map(tag => (
-                      <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
+                      <div key={tag.id} className="tag-chip" style={{ padding: "4px 10px", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color }}
                         onClick={() => addSearchTag(tag.name)}>
                         {tag.name}
                       </div>

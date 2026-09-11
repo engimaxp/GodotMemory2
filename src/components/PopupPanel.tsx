@@ -2,6 +2,7 @@ import React from 'react';
 import { PanelName, SnapEdge } from '../types';
 import '../styles/PopupPanel.css';
 import { useI18n } from '../i18n';
+import { AnimalIslandDefs } from './AnimalIslandDefs';
 
 interface PopupPanelProps {
   visible: boolean;
@@ -37,12 +38,14 @@ export const PopupPanel: React.FC<PopupPanelProps> = ({
   const { t } = useI18n();
   return (
     <div className={`popup ${visible ? 'popup--visible' : ''} ${getSnapClass(snappedEdge)}`}>
+      <AnimalIslandDefs />
       <div className="popup-sidebar">
         <div className="sidebar-icons">
           {(Object.entries(panelIcons) as [PanelName, { icon: string; label: string }][]).map(([name, info]) => (
             <button
               key={name}
               className={`sidebar-btn ${activePanel === name ? 'active' : ''}`}
+              data-panel={name}
               onClick={() => onPanelChange(name)}
               title={t(info.label)}
               data-no-drag="true"
@@ -59,7 +62,7 @@ export const PopupPanel: React.FC<PopupPanelProps> = ({
           ))}
         </div>
         <div className="sidebar-bottom">
-          <button className="sidebar-btn close-btn" onClick={onClose} title="收起" data-no-drag="true">
+          <button className="sidebar-btn close-btn" onClick={onClose} title={t("common.collapse")} data-no-drag="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>

@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { Engine, Tag, EntityWithExtras, Page } from '../types';
 import { TagType } from '../types';
 import * as bridge from '../bridge';
@@ -94,7 +94,7 @@ const EngineEditModal: React.FC<EngineEditModalProps> = ({ engine, initialTagIds
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+      <div className="modal modal--blob" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <div className="modal-header">
           <span className="modal-title">{t(isNew ? "engine.add" : "engine.edit")}</span>
           <button className="modal-close" onClick={onClose}>
@@ -140,9 +140,9 @@ const EngineEditModal: React.FC<EngineEditModalProps> = ({ engine, initialTagIds
               <button className="btn btn-secondary btn-small" onClick={() => handleAddTag()}>{t("Add")}</button>
               {/* Auto-complete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <div style={{ position: "absolute", bottom: "100%", left: 0, right: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", marginBottom: 4 }}>
+                <div className="suggest-panel suggest-panel--up">
                   {suggestions.map(tag => (
-                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2 }}
+                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 10px", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color }}
                       onClick={() => handleSelectSuggestion(tag.name)}>
                       {tag.name}
                     </div>
@@ -180,7 +180,7 @@ const EngineRow: React.FC<EngineRowProps> = ({ engine, onEdit, onDelete, onRun, 
   }, [engine.images]);
   return (
     <div className="item-row">
-      <div className="item-icon" style={{ background: iconSrc ? "transparent" : (e.main_version === 3 ? "#478bfb" : "#6d28d9") }}>
+      <div className="item-icon item-icon--sticker" style={{ background: iconSrc ? "transparent" : (e.main_version === 3 ? "#889df0" : "#b77dee") }}>
         {iconSrc ? <img src={iconSrc} alt="" onError={() => setIconSrc(null)} /> : <span className="item-icon-placeholder" style={{ color: "white", fontSize: 12 }}>{e.main_version === 3 ? "G3" : "G4"}</span>}
       </div>
       <div className="item-info">
@@ -289,7 +289,7 @@ const EnginePanel: React.FC = () => {
 
   return (
     <div className="panel-container">
-      <div className="panel-header" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+      <div className="panel-header panel-toolbar">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input className="panel-search-input" value={search}
             onChange={e => { setSearch(e.target.value); setPage(p => ({ ...p, index: 1 })); }}
@@ -320,11 +320,11 @@ const EnginePanel: React.FC = () => {
               <input className="tag-input" value={tagSearchText}
                 onChange={e => setTagSearchText(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") addSearchTag(tagSearchText.trim()); }}
-                placeholder={t("tag.search_placeholder")} style={{ width: 120, fontSize: 11, padding: "2px 6px" }} />
+                placeholder={t("tag.search_placeholder")} />
               {showTagSuggestions && tagSuggestions.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-popup)", border: "1px solid var(--border-color)", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 150, overflowY: "auto", minWidth: 120 }}>
+                <div className="suggest-panel suggest-panel--down">
                   {tagSuggestions.map(tag => (
-                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color, margin: 2, borderRadius: 4 }}
+                    <div key={tag.id} className="tag-chip" style={{ padding: "4px 10px", display: "flex", alignItems: "center", gap: 6, background: "#" + tag.color + "22", color: "#" + tag.color }}
                       onClick={() => addSearchTag(tag.name)}>
                       {tag.name}
                     </div>
