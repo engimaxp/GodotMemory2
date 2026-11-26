@@ -1,10 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import './styles/index.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+let label = 'main';
+try { label = getCurrentWindow().label; } catch { /* Browser preview. */ }
+
+const entry = label.startsWith('note-') ? import('./components/StickyNoteWindow') : import('./App');
+void entry.then(({ default: WindowContent }) => {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode><WindowContent /></React.StrictMode>
+  );
+});

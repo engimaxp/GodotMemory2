@@ -283,11 +283,20 @@ export const CompassIcon = (props: SVGProps<SVGSVGElement>) => (
   </Svg>
 );
 
+export const GaugeIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Svg {...props}>
+    <rect x="8" y="12" width="32" height="24" rx="12" fill="#FAEDCD" />
+    <path d="M14 28 A 10 10 0 0 1 34 28" fill="none" stroke="#2A9D8F" strokeWidth="4" />
+    <path d="M24 28 L31 19" stroke="#E76F51" strokeWidth="3.5" />
+    <circle cx="24" cy="28" r="3" fill="#E9C46A" />
+  </Svg>
+);
+
 export type IslandIconName =
   | 'Cat' | 'Settings' | 'Rocket' | 'Leaf' | 'Fish' | 'Book' | 'Calendar'
   | 'Play' | 'Folder' | 'Edit' | 'Trash' | 'Star' | 'Bookmark' | 'Camera'
   | 'Image' | 'Plus' | 'Close' | 'Globe' | 'Search' | 'Refresh' | 'Tag'
-  | 'Sun' | 'Snail' | 'Cactus' | 'Flower' | 'Moon' | 'Compass';
+  | 'Sun' | 'Snail' | 'Cactus' | 'Flower' | 'Moon' | 'Compass' | 'Gauge';
 
 /** Name → artwork registry (key = file name without the `Icon` suffix, like upstream). */
 export const ISLAND_ICONS: Record<IslandIconName, React.FC<SVGProps<SVGSVGElement>>> = {
@@ -318,6 +327,7 @@ export const ISLAND_ICONS: Record<IslandIconName, React.FC<SVGProps<SVGSVGElemen
   Flower: FlowerIcon,
   Moon: MoonIcon,
   Compass: CompassIcon,
+  Gauge: GaugeIcon,
 };
 
 export interface IslandIconProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'color'> {

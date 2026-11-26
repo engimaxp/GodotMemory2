@@ -1,0 +1,294 @@
+[data-note-color='honey'] { --note-paper: #fff4d1; --note-tint: #efcf83; --note-line: #c2a35d; }
+[data-note-color='mint']  { --note-paper: #e3f5e8; --note-tint: #addebe; --note-line: #77ab8a; }
+[data-note-color='peach'] { --note-paper: #ffebe0; --note-tint: #f8c5b1; --note-line: #ca907a; }
+[data-note-color='lilac'] { --note-paper: #f4eafa; --note-tint: #d8bee9; --note-line: #ab8fbf; }
+[data-note-color='sky']   { --note-paper: #e7f2fb; --note-tint: #bbdaed; --note-line: #829fb7; }
+
+.sticky-note-window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: #3d3529;
+  font: 14px var(--animal-font, sans-serif);
+}
+
+.sticky-note-window:not([data-note-edge='None']) .sticky-note-editor {
+  display: none;
+}
+
+.sticky-note-editor {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--note-paper);
+  border: 1px solid var(--note-line);
+  border-radius: 11px;
+}
+
+.sticky-note-header {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: var(--note-tint);
+  border-bottom: 1px solid var(--note-line);
+}
+
+.sticky-note-grip {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 7px;
+  min-width: 0;
+  min-height: 38px;
+  padding-inline: 10px 4px;
+  font-weight: 700;
+  user-select: none;
+  touch-action: none;
+  cursor: move;
+}
+.sticky-note-grip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sticky-note-grip svg { flex-shrink: 0; pointer-events: none; }
+
+.sticky-note-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: 5px;
+}
+.sticky-note-window-controls button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 27px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: 18px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.sticky-note-window-controls button:hover { background: #ffffff58; }
+.sticky-note-window-controls .sticky-note-close:hover { background: #9d2a38; color: #fff; }
+.sticky-note-color-toggle::before {
+  content: '';
+  width: 13px;
+  height: 13px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: var(--note-paper);
+}
+
+.sticky-note-palette {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 7px;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--note-line);
+  border-radius: 9px;
+  background: #fffdf7;
+  box-shadow: 0 4px 10px #3d352935;
+}
+.sticky-note-palette button {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--note-line);
+  border-radius: 50%;
+  background: var(--note-tint);
+  cursor: pointer;
+}
+.sticky-note-palette button[aria-pressed='true'] { outline: 2px solid #3d3529; outline-offset: 1px; }
+
+.sticky-note-editor textarea {
+  width: 100%;
+  height: 100%;
+  padding: 14px;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.6;
+}
+.sticky-note-editor textarea::placeholder { color: #635b4d; }
+.sticky-note-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 26px;
+  padding-inline: 12px;
+  color: #60594d;
+  font-size: 11px;
+}
+.sticky-note-status button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sticky-note-edge-tab {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 4px 11px;
+  border: 1px solid var(--note-line);
+  border-radius: 9px;
+  background: var(--note-tint);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sticky-note-edge-tab:hover { background: var(--note-paper); }
+.sticky-note-edge-tab span { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+.sticky-note-window:not([data-note-edge='None']) {
+  /* Match the native tab depth so clipping stays aligned after window resize. */
+  --tab-depth: 34px;
+  --tab-offset: calc(var(--tab-depth) - 12px);
+}
+.sticky-note-window[data-peeking] { --tab-offset: 0px; }
+.sticky-note-window:not([data-note-edge='None']) .sticky-note-edge-tab {
+  display: flex;
+  transition: translate 210ms var(--animal-ease);
+}
+.sticky-note-window:not([data-note-edge='None']):not([data-peeking]) .sticky-note-edge-tab span { opacity: 0; }
+.sticky-note-window:not([data-note-edge='None']) .sticky-note-edge-tab span { transition: opacity 180ms ease; }
+.sticky-note-window:is([data-note-edge='Left'], [data-note-edge='Right']) .sticky-note-edge-tab {
+  inset-block: 50% auto;
+  width: var(--tab-depth);
+  height: min(156px, 100%);
+  padding: 9px 4px;
+}
+.sticky-note-window:is([data-note-edge='Left'], [data-note-edge='Right']) .sticky-note-edge-tab span {
+  max-height: 100%;
+  writing-mode: vertical-rl;
+}
+.sticky-note-window:is([data-note-edge='Top'], [data-note-edge='Bottom']) .sticky-note-edge-tab {
+  inset-inline: 50% auto;
+  width: min(156px, 100%);
+  height: var(--tab-depth);
+}
+.sticky-note-window[data-note-edge='Left'] .sticky-note-edge-tab {
+  right: auto;
+  border-radius: 0 9px 9px 0;
+  translate: calc(-1 * var(--tab-offset)) -50%;
+}
+.sticky-note-window[data-note-edge='Right'] .sticky-note-edge-tab {
+  left: auto;
+  border-radius: 9px 0 0 9px;
+  translate: var(--tab-offset) -50%;
+}
+.sticky-note-window[data-note-edge='Top'] .sticky-note-edge-tab {
+  bottom: auto;
+  border-radius: 0 0 9px 9px;
+  translate: -50% calc(-1 * var(--tab-offset));
+}
+.sticky-note-window[data-note-edge='Bottom'] .sticky-note-edge-tab {
+  top: auto;
+  border-radius: 9px 9px 0 0;
+  translate: -50% var(--tab-offset);
+}
+
+/* Switch with the native viewport, including the frame before its edge event arrives. */
+@media (max-width: 55px), (max-height: 55px) {
+  .sticky-note-window[data-note-edge='None'] .sticky-note-editor { display: none; }
+  .sticky-note-window[data-note-edge='None'] .sticky-note-edge-tab { display: flex; }
+}
+@media (max-width: 55px) {
+  .sticky-note-edge-tab { padding: 9px 4px; }
+  .sticky-note-edge-tab span { max-height: 100%; writing-mode: vertical-rl; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticky-note-window:not([data-note-edge='None']) .sticky-note-edge-tab,
+  .sticky-note-window:not([data-note-edge='None']) .sticky-note-edge-tab span { transition: none; }
+}
+
+.sticky-notes-list { display: flex; flex-direction: column; gap: 14px; }
+.sticky-notes-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sticky-notes-toolbar input {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  border: 1px solid var(--animal-border);
+  border-radius: 9px;
+  color: var(--animal-text);
+  background: var(--animal-bg-input);
+  font: inherit;
+}
+.sticky-notes-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--animal-border);
+  border-radius: 9px;
+  background: var(--animal-primary);
+  color: #173733;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sticky-notes-empty { padding: 24px 0; color: var(--animal-text-muted); text-align: center; }
+.sticky-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 11px;
+  list-style: none;
+}
+.sticky-note-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  min-height: 94px;
+  overflow: hidden;
+  border: 1px solid var(--note-line);
+  border-top: 4px solid var(--note-tint);
+  border-radius: 10px;
+  background: var(--note-paper);
+  color: #3d3529;
+}
+.sticky-note-card-open {
+  display: grid;
+  gap: 5px;
+  align-self: stretch;
+  min-width: 0;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sticky-note-card-open:hover { background: #ffffff55; }
+.sticky-note-card-open strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sticky-note-card-open span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.sticky-note-card-open time { align-self: end; font-size: 11px; color: #60594d; }
+.sticky-note-card-delete {
+  margin: 6px;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.sticky-note-card-delete:hover { background: #00000010; }

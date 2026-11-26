@@ -355,7 +355,7 @@
   text-align: center;
 }
 .empty-state p { font-size: 13px; font-weight: 600; }
-.empty-state .island-icon { opacity: 0.85; animation: animal-bob 3.2s ease-in-out infinite; }
+.empty-state .island-icon { opacity: 0.85; }
 
 /* ─── Diary ──────────────────────────────────────────────────────────── */
 .diary-sort-btn {

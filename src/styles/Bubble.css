@@ -1,13 +1,89 @@
 /* =========================================================================
-   Floating island orb — the collapsed GodotMemory bubble.
-   A warm coin floating on a cream ring; teal only appears on interaction.
+   Floating Bubble — Classic Island Orb + Binary Energy Capsule
+   Capsule aesthetic inspired by AntigravityQuotaWatcherDesktop (Float):
+   dark frosted glass, cold/warm water-tank waves, top gloss, mini weekly bar.
    ========================================================================= */
 
-.bubble {
+.bubble-zone {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  translate: -50% -50%;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.bubble-frame {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.bubble-slide {
+  position: relative;
+  width: var(--bubble-width, var(--bubble-size));
+  height: var(--bubble-height, var(--bubble-size));
+  translate: 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble-zone[data-dock-edge] .bubble-slide {
+  transition: translate 210ms cubic-bezier(0.25, 0.75, 0.25, 1);
+}
+
+/* Rectangular-safe docking: frame keeps full untucked window size along the dock axis. */
+.bubble-zone[data-dock-edge] .bubble-frame {
+  --tucked-depth: clamp(10px, calc(var(--bubble-size) * 0.11), 16px);
+}
+
+.bubble-zone[data-dock-edge='Left'] .bubble-frame {
+  --slide-distance: calc((var(--window-width) + var(--bubble-width)) / 2 - var(--tucked-depth));
+  right: auto;
+  width: var(--window-width);
+}
+
+.bubble-zone[data-dock-edge='Right'] .bubble-frame {
+  --slide-distance: calc((var(--window-width) + var(--bubble-width)) / 2 - var(--tucked-depth));
+  left: auto;
+  width: var(--window-width);
+}
+
+.bubble-zone[data-dock-edge='Top'] .bubble-frame {
+  --slide-distance: calc((var(--window-height) + var(--bubble-height)) / 2 - var(--tucked-depth));
+  bottom: auto;
+  height: var(--window-height);
+}
+
+.bubble-zone[data-dock-edge='Bottom'] .bubble-frame {
+  --slide-distance: calc((var(--window-height) + var(--bubble-height)) / 2 - var(--tucked-depth));
+  top: auto;
+  height: var(--window-height);
+}
+
+.bubble-zone[data-tucked][data-dock-edge='Left'] .bubble-slide {
+  translate: calc(-1 * var(--slide-distance)) 0;
+}
+
+.bubble-zone[data-tucked][data-dock-edge='Right'] .bubble-slide {
+  translate: var(--slide-distance) 0;
+}
+
+.bubble-zone[data-tucked][data-dock-edge='Top'] .bubble-slide {
+  translate: 0 calc(-1 * var(--slide-distance));
+}
+
+.bubble-zone[data-tucked][data-dock-edge='Bottom'] .bubble-slide {
+  translate: 0 var(--slide-distance);
+}
+
+/* ─── Classic Icon Bubble ────────────────────────────────────────────── */
+.bubble {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
   border-radius: 50%;
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55), transparent 46%),
@@ -20,26 +96,25 @@
   z-index: 1000;
   border: 3px solid #c4b89e;
   box-shadow:
-    0 8px 0 0 #bdaea0,
-    0 14px 26px 0 rgba(61, 52, 40, 0.28);
+    0 5px 0 0 #bdaea0,
+    0 8px 16px 0 rgba(61, 52, 40, 0.28);
   transition: transform 0.2s var(--animal-ease), box-shadow 0.2s var(--animal-ease);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
 }
-.bubble:hover {
+
+.bubble-zone:not([data-dock-edge]) .bubble:hover {
   transform: translateY(-3px) scale(1.04);
   box-shadow:
-    0 10px 0 0 #bdaea0,
-    0 20px 32px 0 rgba(61, 52, 40, 0.3);
+    0 7px 0 0 #bdaea0,
+    0 11px 18px 0 rgba(61, 52, 40, 0.3);
 }
-.bubble:active {
+
+.bubble-zone:not([data-dock-edge]) .bubble:active {
   transform: translateY(4px) scale(0.97);
   box-shadow:
     0 2px 0 0 #bdaea0,
     0 6px 14px 0 rgba(61, 52, 40, 0.3);
 }
 
-/* Rotating mint ring — the "selected app" halo */
 .bubble-ring {
   position: absolute;
   inset: -8px;
@@ -58,11 +133,9 @@
   mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   opacity: 0.75;
-  animation: bubble-spin 9s linear infinite;
   pointer-events: none;
 }
 
-/* polka-dot "grass" badge behind the icon */
 .bubble::after {
   content: '';
   position: absolute;
@@ -84,8 +157,400 @@
   filter: drop-shadow(0 3px 0 rgba(61, 52, 40, 0.22));
 }
 
+/* ─── Binary Energy Capsule ──────────────────────────────────────────── */
+.capsule-trigger {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.2s var(--animal-ease);
+}
+
+.bubble-zone:not([data-dock-edge]) .capsule-trigger:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.bubble-zone:not([data-dock-edge]) .capsule-trigger:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.capsule-scale-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  flex-shrink: 0;
+}
+
+.capsule-outer {
+  position: relative;
+  width: 100%;
+  height: 86px;
+  border-radius: 44px;
+  padding: 1.5px;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.36),
+    0 2px 6px rgba(0, 0, 0, 0.24);
+}
+
+.capsule-outer--both {
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0.55) 0%, rgba(255, 255, 255, 0.24) 50%, rgba(251, 146, 60, 0.55) 100%);
+}
+
+.capsule-outer--codex {
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.6) 0%, rgba(147, 197, 253, 0.25) 100%);
+}
+
+.capsule-outer--antigravity {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.6) 0%, rgba(253, 186, 116, 0.25) 100%);
+}
+
+.capsule-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 42.5px;
+  background: rgba(11, 13, 18, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.capsule-ambient-left,
+.capsule-ambient-right {
+  position: absolute;
+  top: 0;
+  width: 60%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.capsule-ambient-left { left: 0; }
+.capsule-ambient-right { right: 0; }
+
+.capsule-ambient--blue {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.16) 0%, rgba(30, 58, 138, 0.06) 60%, transparent 100%);
+}
+
+.capsule-ambient--orange {
+  background: linear-gradient(270deg, rgba(249, 115, 22, 0.16) 0%, rgba(154, 52, 18, 0.06) 60%, transparent 100%);
+}
+
+.capsule-sections {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.capsule-section {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.capsule-section--left {
+  border-radius: 42.5px 0 0 42.5px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.capsule-section--right {
+  border-radius: 0 42.5px 42.5px 0;
+}
+
+.capsule-section--solo {
+  border-radius: 42.5px;
+}
+
+/* Water Tank Waves */
+@keyframes wave-rotate {
+  0% { transform: rotate(0deg) translateX(-3%); }
+  50% { transform: rotate(180deg) translateX(3%); }
+  100% { transform: rotate(360deg) translateX(-3%); }
+}
+
+.water-tank {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+.water-tank .wave-group {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 440px;
+  transition: top 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.water-tank .wave-layer {
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  left: 50%;
+  margin-left: -180px;
+  top: 0;
+  animation: wave-rotate linear infinite;
+  will-change: transform;
+}
+
+.water-tank .wave-front {
+  z-index: 2;
+  border-radius: 38%;
+  animation-duration: 7.5s;
+}
+
+.water-tank .wave-back {
+  z-index: 1;
+  border-radius: 36%;
+  animation-duration: 11s;
+  animation-direction: reverse;
+}
+
+.water-tank--blue .wave-front {
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.88) 0%, rgba(37, 99, 235, 0.92) 100%);
+}
+
+.water-tank--blue .wave-back {
+  background: rgba(59, 130, 246, 0.45);
+}
+
+.water-tank--orange .wave-front {
+  background: linear-gradient(180deg, rgba(251, 146, 60, 0.88) 0%, rgba(234, 88, 12, 0.92) 100%);
+}
+
+.water-tank--orange .wave-back {
+  background: rgba(249, 115, 22, 0.45);
+}
+
+.water-tank--still .wave-layer {
+  animation: none;
+  transform: none;
+  border-radius: 0;
+}
+
+/* Capsule foreground text */
+.capsule-content {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.capsule-label-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.capsule-glyph {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.capsule-glyph--blue { color: #bfdbfe; }
+.capsule-glyph--orange { color: #fed7aa; }
+
+.capsule-name {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.capsule-value {
+  font-size: 26px;
+  line-height: 1.05;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.capsule-value--normal { color: #ffffff; }
+.capsule-value--warning { color: #fef08a; }
+.capsule-value--critical { color: #fecdd3; }
+.capsule-value--depleted { color: rgba(255, 255, 255, 0.58); }
+
+.capsule-reset {
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.capsule-reset--cool { color: #e0f2fe; }
+.capsule-reset--warm { color: #fef3c7; }
+.capsule-reset--urgent { color: #ffe4e6; }
+
+/* Glass reflections */
+.capsule-gloss {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  border-radius: 42.5px 42.5px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.capsule-rim-light {
+  position: absolute;
+  bottom: 0;
+  left: 16%;
+  right: 16%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(147, 197, 253, 0.45), rgba(253, 186, 116, 0.45), transparent);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Bottom Mini Quota Bar (Weekly / Secondary) */
+.mini-quota-bar {
+  height: 22px;
+  margin-top: 4px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(11, 13, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: 100%;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+}
+
+.mini-quota-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.mini-progress-bar {
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.35s ease-out;
+}
+
+.mini-progress-fill--normal { background: #22c55e; }
+.mini-progress-fill--warning { background: #eab308; }
+.mini-progress-fill--critical { background: #ef4444; }
+.mini-progress-fill--depleted { background: #6b7280; }
+
+.mini-quota-value {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.mini-quota-alias {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.62);
+  text-transform: uppercase;
+}
+
+.mini-quota-placeholder {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+/* Compact flash notification badge on the floating bubble */
+.bubble-flash {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+  animation: animal-fade-in 0.2s ease-out;
+}
+
+.bubble-flash--success {
+  background: rgba(22, 163, 74, 0.92);
+  color: #ffffff;
+}
+
+.bubble-flash--warning {
+  background: rgba(217, 119, 6, 0.94);
+  color: #ffffff;
+}
+
+.bubble-flash--error {
+  background: rgba(220, 38, 38, 0.94);
+  color: #ffffff;
+}
+
 @keyframes bubble-spin { to { transform: rotate(360deg); } }
 
+@media (prefers-reduced-motion: no-preference) {
+  .bubble-zone:not([data-tucked]) .bubble:is(:hover, :focus-visible) .bubble-ring {
+    animation: bubble-spin 900ms ease-out;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .bubble-ring { animation: none; }
+  .bubble-zone[data-dock-edge] .bubble-slide { transition: none; }
+  .water-tank .wave-layer { animation: none; }
 }

@@ -6,7 +6,8 @@ import { invoke } from '@tauri-apps/api/core';
 import type {
   Engine, Proj, Asset, Tool, Diary, DiaryDetail,
   Tag, ImageRecord, EntityWithExtras,
-  Page, Settings, WorkArea, SnapResult, PanelName,
+  Page, Settings, BubbleDock, NoteDraft, StickyNote, NoteWindowAction, NoteWindowView, NoteDrag,
+  QuotaSnapshot,
 } from './types/index';
 
 // ═══════════════════════════ Engine CRUD ═══════════════════════════
@@ -189,6 +190,15 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
   return invoke('save_settings', { newSettings: settings });
 }
 
+// ═══════════════════════════ Quota ═══════════════════════════
+
+export async function getQuotaSnapshot(): Promise<QuotaSnapshot | null> {
+  return invoke('get_quota_snapshot');
+}
+export async function refreshQuota(): Promise<QuotaSnapshot> {
+  return invoke('refresh_quota');
+}
+
 // ═══════════════════════════ Window ═══════════════════════════
 
 export async function setWindowMode(mode: string): Promise<void> {
@@ -197,20 +207,51 @@ export async function setWindowMode(mode: string): Promise<void> {
 export async function getWindowMode(): Promise<string> {
   return invoke<string>('get_window_mode');
 }
-export async function startDragging(): Promise<void> {
-  return invoke('start_dragging');
+export async function getBubbleDock(): Promise<BubbleDock> {
+  return invoke('get_bubble_dock');
+}
+export async function setBubbleHover(hovered: boolean): Promise<void> {
+  return invoke('set_bubble_hover', { hovered });
+}
+export async function finishBubbleTuck(revision: number): Promise<void> {
+  return invoke('finish_bubble_tuck', { revision });
+}
+
+export function listStickyNotes(): Promise<StickyNote[]> {
+  return invoke('list_sticky_notes');
+}
+export function createStickyNote(): Promise<StickyNote> {
+  return invoke('create_sticky_note');
+}
+export function getStickyNote(): Promise<StickyNote> {
+  return invoke('get_sticky_note');
+}
+export function saveStickyNote(draft: NoteDraft): Promise<void> {
+  return invoke('save_sticky_note', { content: draft.content, color: draft.color });
+}
+export function deleteStickyNote(id: string): Promise<void> {
+  return invoke('delete_sticky_note', { id });
+}
+export function openStickyNote(id: string): Promise<void> {
+  return invoke('open_sticky_note', { id });
+}
+export function stickyNoteWindowAction(action: NoteWindowAction, revision?: number): Promise<NoteWindowView> {
+  return invoke('sticky_note_window_action', { action, revision });
+}
+export function dragStickyNote(phase: NoteDrag): Promise<NoteWindowView> {
+  return invoke('drag_sticky_note', { phase });
+}
+export async function beginBubbleDrag(grabX: number, grabY: number): Promise<void> {
+  return invoke('begin_bubble_drag', { grabX, grabY });
+}
+export async function moveBubbleDrag(): Promise<void> {
+  return invoke('move_bubble_drag');
+}
+export async function endBubbleDrag(moved: boolean): Promise<void> {
+  return invoke('end_bubble_drag', { moved });
 }
 export async function togglePanel(): Promise<void> {
   return invoke('toggle_panel');
-}
-export async function resizeWindow(width: number, height: number): Promise<void> {
-  return invoke('resize_window', { width, height });
-}
-export async function getScreenWorkArea(): Promise<WorkArea> {
-  return invoke('get_screen_work_area');
-}
-export async function snapToEdge(): Promise<SnapResult> {
-  return invoke('snap_to_edge');
 }
 
 // ═══════════════════════════ Utils ═══════════════════════════

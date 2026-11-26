@@ -16,11 +16,13 @@ interface PopupPanelProps {
 
 /** Island artwork per panel — the dock reads like the island home screen. */
 const panelIcons: Record<PanelName, { icon: IslandIconName; label: string }> = {
+  Quota: { icon: 'Gauge', label: 'Quota' },
   Engine: { icon: 'Settings', label: 'Engine' },
   Proj: { icon: 'Rocket', label: 'Proj' },
   Asset: { icon: 'Leaf', label: 'Asset' },
   Tool: { icon: 'Fish', label: 'Tool' },
   Diary: { icon: 'Book', label: 'Diary' },
+  Notes: { icon: 'Bookmark', label: 'Notes' },
   Setting: { icon: 'Compass', label: 'Setting' },
 };
 function getSnapClass(edge: string): string {

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GodotMemory",
-  "version": "2.0.0",
+  "version": "2.1.4",
   "identifier": "com.godotmemory.app",
   "build": {
     "frontendDist": "../dist",
@@ -16,10 +16,6 @@
         "label": "main",
         "width": 128,
         "height": 128,
-        "minWidth": 128,
-        "minHeight": 128,
-        "maxWidth": 900,
-        "maxHeight": 900,
         "resizable": false,
         "fullscreen": false,
         "decorations": false,

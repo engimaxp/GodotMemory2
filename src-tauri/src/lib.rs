@@ -1,11 +1,12 @@
 ﻿use std::fs;
-use tauri::Manager;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 pub mod window;
 pub mod edge_snap;
 pub mod settings_store;
 pub mod database;
+pub mod quota;
+mod sticky_notes;
 
 use settings_store::SettingsStore;
 
@@ -14,297 +15,250 @@ use settings_store::SettingsStore;
 // ═══════════════════ Engine Commands ═══════════════════
 
 #[tauri::command]
-fn db_list_engines(app: tauri::AppHandle, page: Option<database::Page>) -> Result<database::SearchResult<database::Engine>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_engines(page.as_ref())
+fn db_list_engines(db: tauri::State<'_, database::DatabaseStore>, page: Option<database::Page>) -> Result<database::SearchResult<database::Engine>, String> {
+    db.with(|db| db.list_engines(page.as_ref()))
 }
 
 #[tauri::command]
-fn db_list_all_engines(app: tauri::AppHandle) -> Result<Vec<database::EntityWithExtras<database::Engine>>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_all_engines()
+fn db_list_all_engines(db: tauri::State<'_, database::DatabaseStore>) -> Result<Vec<database::EntityWithExtras<database::Engine>>, String> {
+    db.with(|db| db.list_all_engines())
 }
 
 #[tauri::command]
-fn db_search_engines(app: tauri::AppHandle, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Engine>, String> {
-    let db = database::Database::new(&app)?;
-    db.search_engines(&search, &tag_ids, page.as_ref())
+fn db_search_engines(db: tauri::State<'_, database::DatabaseStore>, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Engine>, String> {
+    db.with(|db| db.search_engines(&search, &tag_ids, page.as_ref()))
 }
 
 #[tauri::command]
-fn db_add_engine(app: tauri::AppHandle, engine: database::Engine, tag_ids: Vec<String>) -> Result<String, String> {
-    let db = database::Database::new(&app)?;
-    db.add_engine(&engine, &tag_ids)
+fn db_add_engine(db: tauri::State<'_, database::DatabaseStore>, engine: database::Engine, tag_ids: Vec<String>) -> Result<String, String> {
+    db.with(|db| db.add_engine(&engine, &tag_ids))
 }
 
 #[tauri::command]
-fn db_update_engine(app: tauri::AppHandle, engine: database::Engine, tag_ids: Vec<String>) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.update_engine(&engine, &tag_ids)
+fn db_update_engine(db: tauri::State<'_, database::DatabaseStore>, engine: database::Engine, tag_ids: Vec<String>) -> Result<(), String> {
+    db.with(|db| db.update_engine(&engine, &tag_ids))
 }
 
 #[tauri::command]
-fn db_delete_engine(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.delete_engine(&id)
+fn db_delete_engine(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<(), String> {
+    db.with(|db| db.delete_engine(&id))
 }
 
 #[tauri::command]
-fn db_get_engine_by_id(app: tauri::AppHandle, id: String) -> Result<database::Engine, String> {
-    let db = database::Database::new(&app)?;
-    db.get_engine_by_id(&id)
+fn db_get_engine_by_id(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<database::Engine, String> {
+    db.with(|db| db.get_engine_by_id(&id))
 }
 
 // ═══════════════════ Proj Commands ═══════════════════
 
 #[tauri::command]
-fn db_list_projs(app: tauri::AppHandle, page: Option<database::Page>) -> Result<database::SearchResult<database::Proj>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_projs(page.as_ref())
+fn db_list_projs(db: tauri::State<'_, database::DatabaseStore>, page: Option<database::Page>) -> Result<database::SearchResult<database::Proj>, String> {
+    db.with(|db| db.list_projs(page.as_ref()))
 }
 
 #[tauri::command]
-fn db_list_all_projs(app: tauri::AppHandle) -> Result<Vec<database::EntityWithExtras<database::Proj>>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_all_projs()
+fn db_list_all_projs(db: tauri::State<'_, database::DatabaseStore>) -> Result<Vec<database::EntityWithExtras<database::Proj>>, String> {
+    db.with(|db| db.list_all_projs())
 }
 
 #[tauri::command]
-fn db_search_projs(app: tauri::AppHandle, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Proj>, String> {
-    let db = database::Database::new(&app)?;
-    db.search_projs(&search, &tag_ids, page.as_ref())
+fn db_search_projs(db: tauri::State<'_, database::DatabaseStore>, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Proj>, String> {
+    db.with(|db| db.search_projs(&search, &tag_ids, page.as_ref()))
 }
 
 #[tauri::command]
-fn db_add_proj(app: tauri::AppHandle, proj: database::Proj, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
-    let db = database::Database::new(&app)?;
-    db.add_proj(&proj, &tag_ids, &image_ids)
+fn db_add_proj(db: tauri::State<'_, database::DatabaseStore>, proj: database::Proj, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
+    db.with(|db| db.add_proj(&proj, &tag_ids, &image_ids))
 }
 
 #[tauri::command]
-fn db_update_proj(app: tauri::AppHandle, proj: database::Proj, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.update_proj(&proj, &tag_ids, &image_ids)
+fn db_update_proj(db: tauri::State<'_, database::DatabaseStore>, proj: database::Proj, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<(), String> {
+    db.with(|db| db.update_proj(&proj, &tag_ids, &image_ids))
 }
 
 #[tauri::command]
-fn db_delete_proj(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.delete_proj(&id)
+fn db_delete_proj(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<(), String> {
+    db.with(|db| db.delete_proj(&id))
 }
 
 #[tauri::command]
-fn db_toggle_proj_star(app: tauri::AppHandle, id: String, star: bool) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.toggle_proj_star(&id, star)
+fn db_toggle_proj_star(db: tauri::State<'_, database::DatabaseStore>, id: String, star: bool) -> Result<(), String> {
+    db.with(|db| db.toggle_proj_star(&id, star))
 }
 
 #[tauri::command]
-fn db_scan_projects(app: tauri::AppHandle, dir: String) -> Result<i32, String> {
-    let db = database::Database::new(&app)?;
-    db.scan_projects(&dir)
+fn db_scan_projects(db: tauri::State<'_, database::DatabaseStore>, dir: String) -> Result<i32, String> {
+    db.with(|db| db.scan_projects(&dir))
 }
 
 // ═══════════════════ Asset Commands ═══════════════════
 
 #[tauri::command]
-fn db_list_assets(app: tauri::AppHandle, page: Option<database::Page>) -> Result<database::SearchResult<database::Asset>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_assets(page.as_ref())
+fn db_list_assets(db: tauri::State<'_, database::DatabaseStore>, page: Option<database::Page>) -> Result<database::SearchResult<database::Asset>, String> {
+    db.with(|db| db.list_assets(page.as_ref()))
 }
 
 #[tauri::command]
-fn db_list_all_assets(app: tauri::AppHandle) -> Result<Vec<database::EntityWithExtras<database::Asset>>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_all_assets()
+fn db_list_all_assets(db: tauri::State<'_, database::DatabaseStore>) -> Result<Vec<database::EntityWithExtras<database::Asset>>, String> {
+    db.with(|db| db.list_all_assets())
 }
 
 #[tauri::command]
-fn db_search_assets(app: tauri::AppHandle, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Asset>, String> {
-    let db = database::Database::new(&app)?;
-    db.search_assets(&search, &tag_ids, page.as_ref())
+fn db_search_assets(db: tauri::State<'_, database::DatabaseStore>, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Asset>, String> {
+    db.with(|db| db.search_assets(&search, &tag_ids, page.as_ref()))
 }
 
 #[tauri::command]
-fn db_add_asset(app: tauri::AppHandle, asset: database::Asset, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
-    let db = database::Database::new(&app)?;
-    db.add_asset(&asset, &tag_ids, &image_ids)
+fn db_add_asset(db: tauri::State<'_, database::DatabaseStore>, asset: database::Asset, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
+    db.with(|db| db.add_asset(&asset, &tag_ids, &image_ids))
 }
 
 #[tauri::command]
-fn db_update_asset(app: tauri::AppHandle, asset: database::Asset, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.update_asset(&asset, &tag_ids, &image_ids)
+fn db_update_asset(db: tauri::State<'_, database::DatabaseStore>, asset: database::Asset, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<(), String> {
+    db.with(|db| db.update_asset(&asset, &tag_ids, &image_ids))
 }
 
 #[tauri::command]
-fn db_delete_asset(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.delete_asset(&id)
+fn db_delete_asset(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<(), String> {
+    db.with(|db| db.delete_asset(&id))
 }
 
 #[tauri::command]
-fn db_toggle_asset_star(app: tauri::AppHandle, id: String, star: bool) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.toggle_asset_star(&id, star)
+fn db_toggle_asset_star(db: tauri::State<'_, database::DatabaseStore>, id: String, star: bool) -> Result<(), String> {
+    db.with(|db| db.toggle_asset_star(&id, star))
 }
 
 // ═══════════════════ Tool Commands ═══════════════════
 
 #[tauri::command]
-fn db_list_tools(app: tauri::AppHandle, page: Option<database::Page>) -> Result<database::SearchResult<database::Tool>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_tools(page.as_ref())
+fn db_list_tools(db: tauri::State<'_, database::DatabaseStore>, page: Option<database::Page>) -> Result<database::SearchResult<database::Tool>, String> {
+    db.with(|db| db.list_tools(page.as_ref()))
 }
 
 #[tauri::command]
-fn db_list_all_tools(app: tauri::AppHandle) -> Result<Vec<database::EntityWithExtras<database::Tool>>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_all_tools()
+fn db_list_all_tools(db: tauri::State<'_, database::DatabaseStore>) -> Result<Vec<database::EntityWithExtras<database::Tool>>, String> {
+    db.with(|db| db.list_all_tools())
 }
 
 #[tauri::command]
-fn db_search_tools(app: tauri::AppHandle, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Tool>, String> {
-    let db = database::Database::new(&app)?;
-    db.search_tools(&search, &tag_ids, page.as_ref())
+fn db_search_tools(db: tauri::State<'_, database::DatabaseStore>, search: String, tag_ids: Vec<String>, page: Option<database::Page>) -> Result<database::SearchResult<database::Tool>, String> {
+    db.with(|db| db.search_tools(&search, &tag_ids, page.as_ref()))
 }
 
 #[tauri::command]
-fn db_add_tool(app: tauri::AppHandle, tool: database::Tool, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
-    let db = database::Database::new(&app)?;
-    db.add_tool(&tool, &tag_ids, &image_ids)
+fn db_add_tool(db: tauri::State<'_, database::DatabaseStore>, tool: database::Tool, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<String, String> {
+    db.with(|db| db.add_tool(&tool, &tag_ids, &image_ids))
 }
 
 #[tauri::command]
-fn db_update_tool(app: tauri::AppHandle, tool: database::Tool, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.update_tool(&tool, &tag_ids, &image_ids)
+fn db_update_tool(db: tauri::State<'_, database::DatabaseStore>, tool: database::Tool, tag_ids: Vec<String>, image_ids: Vec<String>) -> Result<(), String> {
+    db.with(|db| db.update_tool(&tool, &tag_ids, &image_ids))
 }
 
 #[tauri::command]
-fn db_delete_tool(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.delete_tool(&id)
+fn db_delete_tool(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<(), String> {
+    db.with(|db| db.delete_tool(&id))
 }
 
 #[tauri::command]
-fn db_toggle_tool_star(app: tauri::AppHandle, id: String, star: bool) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.toggle_tool_star(&id, star)
+fn db_toggle_tool_star(db: tauri::State<'_, database::DatabaseStore>, id: String, star: bool) -> Result<(), String> {
+    db.with(|db| db.toggle_tool_star(&id, star))
 }
 
 // ═══════════════════ Diary Commands ═══════════════════
 
 #[tauri::command]
-fn db_list_diaries(app: tauri::AppHandle) -> Result<Vec<database::Diary>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_diaries()
+fn db_list_diaries(db: tauri::State<'_, database::DatabaseStore>) -> Result<Vec<database::Diary>, String> {
+    db.with(|db| db.list_diaries())
 }
 
 #[tauri::command]
-fn db_add_diary(app: tauri::AppHandle, diary: database::Diary) -> Result<String, String> {
-    let db = database::Database::new(&app)?;
-    db.add_diary(&diary)
+fn db_add_diary(db: tauri::State<'_, database::DatabaseStore>, diary: database::Diary) -> Result<String, String> {
+    db.with(|db| db.add_diary(&diary))
 }
 
 #[tauri::command]
-fn db_update_diary(app: tauri::AppHandle, diary: database::Diary) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.update_diary(&diary)
+fn db_update_diary(db: tauri::State<'_, database::DatabaseStore>, diary: database::Diary) -> Result<(), String> {
+    db.with(|db| db.update_diary(&diary))
 }
 
 #[tauri::command]
-fn db_delete_diary(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.delete_diary(&id)
+fn db_delete_diary(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<(), String> {
+    db.with(|db| db.delete_diary(&id))
 }
 
 #[tauri::command]
-fn db_get_diary_detail(app: tauri::AppHandle, diary_id: String, create_date: String) -> Result<Option<database::DiaryDetail>, String> {
-    let db = database::Database::new(&app)?;
-    db.get_diary_detail(&diary_id, &create_date)
+fn db_get_diary_detail(db: tauri::State<'_, database::DatabaseStore>, diary_id: String, create_date: String) -> Result<Option<database::DiaryDetail>, String> {
+    db.with(|db| db.get_diary_detail(&diary_id, &create_date))
 }
 
 #[tauri::command]
-fn db_save_diary_detail(app: tauri::AppHandle, detail: database::DiaryDetail) -> Result<String, String> {
-    let db = database::Database::new(&app)?;
-    db.save_diary_detail(&detail)
+fn db_save_diary_detail(db: tauri::State<'_, database::DatabaseStore>, detail: database::DiaryDetail) -> Result<String, String> {
+    db.with(|db| db.save_diary_detail(&detail))
 }
 
 #[tauri::command]
-fn db_query_diary_details(app: tauri::AppHandle, diary_id: String, year: i32) -> Result<Vec<database::DiaryDetail>, String> {
-    let db = database::Database::new(&app)?;
-    db.query_diary_details(&diary_id, year)
+fn db_query_diary_details(db: tauri::State<'_, database::DatabaseStore>, diary_id: String, year: i32) -> Result<Vec<database::DiaryDetail>, String> {
+    db.with(|db| db.query_diary_details(&diary_id, year))
 }
 
 #[tauri::command]
-fn db_query_all_diary_details(app: tauri::AppHandle, diary_id: String) -> Result<Vec<database::DiaryDetail>, String> {
-    let db = database::Database::new(&app)?;
-    db.query_all_diary_details(&diary_id)
+fn db_query_all_diary_details(db: tauri::State<'_, database::DatabaseStore>, diary_id: String) -> Result<Vec<database::DiaryDetail>, String> {
+    db.with(|db| db.query_all_diary_details(&diary_id))
 }
 
 // ═══════════════════ Tag Commands ═══════════════════
 
 #[tauri::command]
-fn db_list_tags(app: tauri::AppHandle, r#type: i32, sub_type: i32) -> Result<Vec<database::Tag>, String> {
-    let db = database::Database::new(&app)?;
-    db.list_tags(r#type, sub_type)
+fn db_list_tags(db: tauri::State<'_, database::DatabaseStore>, r#type: i32, sub_type: i32) -> Result<Vec<database::Tag>, String> {
+    db.with(|db| db.list_tags(r#type, sub_type))
 }
 
 #[tauri::command]
-fn db_query_tag_by_name_like(app: tauri::AppHandle, text: String, r#type: i32, sub_type: i32) -> Result<Vec<database::Tag>, String> {
-    let db = database::Database::new(&app)?;
-    db.query_tag_by_name_like(&text, r#type, sub_type)
+fn db_query_tag_by_name_like(db: tauri::State<'_, database::DatabaseStore>, text: String, r#type: i32, sub_type: i32) -> Result<Vec<database::Tag>, String> {
+    db.with(|db| db.query_tag_by_name_like(&text, r#type, sub_type))
 }
 
 #[tauri::command]
-fn db_insert_tag(app: tauri::AppHandle, name: String, color: String, r#type: i32, sub_type: i32) -> Result<database::Tag, String> {
-    let db = database::Database::new(&app)?;
-    db.insert_tag(&name, &color, r#type, sub_type)
+fn db_insert_tag(db: tauri::State<'_, database::DatabaseStore>, name: String, color: String, r#type: i32, sub_type: i32) -> Result<database::Tag, String> {
+    db.with(|db| db.insert_tag(&name, &color, r#type, sub_type))
 }
 
 #[tauri::command]
-fn db_set_fast_tag(app: tauri::AppHandle, id: String, is_fast: bool) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.set_fast_tag(&id, is_fast)
+fn db_set_fast_tag(db: tauri::State<'_, database::DatabaseStore>, id: String, is_fast: bool) -> Result<(), String> {
+    db.with(|db| db.set_fast_tag(&id, is_fast))
 }
 
 #[tauri::command]
-fn db_update_tag_color(app: tauri::AppHandle, id: String, color: String) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.update_tag_color(&id, &color)
+fn db_update_tag_color(db: tauri::State<'_, database::DatabaseStore>, id: String, color: String) -> Result<(), String> {
+    db.with(|db| db.update_tag_color(&id, &color))
 }
 
 #[tauri::command]
-fn db_delete_tag(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let db = database::Database::new(&app)?;
-    db.delete_tag(&id)
+fn db_delete_tag(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<(), String> {
+    db.with(|db| db.delete_tag(&id))
 }
 
 // ═══════════════════ Image Commands ═══════════════════
 
 #[tauri::command]
-fn db_copy_image_to_cache(app: tauri::AppHandle, src_path: String) -> Result<database::ImageRecord, String> {
-    let db = database::Database::new(&app)?;
-    db.copy_to_cache(&src_path)
+fn db_copy_image_to_cache(db: tauri::State<'_, database::DatabaseStore>, src_path: String) -> Result<database::ImageRecord, String> {
+    db.with(|db| db.copy_to_cache(&src_path))
 }
 
 #[tauri::command]
-fn db_load_image(app: tauri::AppHandle, id: String) -> Result<Option<String>, String> {
-    let db = database::Database::new(&app)?;
-    db.load_image_base64(&id)
+fn db_load_image(db: tauri::State<'_, database::DatabaseStore>, id: String) -> Result<Option<String>, String> {
+    db.with(|db| db.load_image_base64(&id))
 }
 
 #[tauri::command]
-fn db_load_icon(app: tauri::AppHandle, icon_path: String, base_dir: String, entity_id: String, entity_type: i32) -> Result<Option<String>, String> {
-    let db = database::Database::new(&app)?;
-    db.load_entity_icon(&icon_path, &base_dir, &entity_id, entity_type)
+fn db_load_icon(db: tauri::State<'_, database::DatabaseStore>, icon_path: String, base_dir: String, entity_id: String, entity_type: i32) -> Result<Option<String>, String> {
+    db.with(|db| db.load_entity_icon(&icon_path, &base_dir, &entity_id, entity_type))
 }
 
 #[tauri::command]
-fn db_extract_exe_icon(app: tauri::AppHandle, exe_path: String) -> Result<database::ImageRecord, String> {
-    let db = database::Database::new(&app)?;
-    db.extract_exe_icon(&exe_path)
+fn db_extract_exe_icon(db: tauri::State<'_, database::DatabaseStore>, exe_path: String) -> Result<database::ImageRecord, String> {
+    db.with(|db| db.extract_exe_icon(&exe_path))
 }
 
 // ═══════════════════ Settings Commands ═══════════════════
@@ -330,107 +284,108 @@ fn save_settings(app: tauri::AppHandle, new_settings: settings_store::Settings) 
         }
     }
     let settings = app.state::<SettingsStore>();
-    settings.update(new_settings)
+    let updated = settings.update(new_settings)?;
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = app
+            .state::<window::WindowState>()
+            .apply_settings(&window, &updated);
+    }
+    Ok(updated)
+}
+
+// ═══════════════════ Quota Commands ═══════════════════
+
+#[tauri::command]
+fn get_quota_snapshot(state: tauri::State<'_, quota::QuotaState>) -> Option<quota::QuotaSnapshot> {
+    state.get()
+}
+
+#[tauri::command]
+async fn refresh_quota(app: tauri::AppHandle) -> Result<quota::QuotaSnapshot, String> {
+    let snapshot = tauri::async_runtime::spawn_blocking(quota::fetch_all_quotas)
+        .await
+        .map_err(|e| format!("配额查询任务异常: {e}"))?;
+    app.state::<quota::QuotaState>().set(snapshot.clone());
+    let _ = app.emit("quota:updated", &snapshot);
+    Ok(snapshot)
 }
 
 // ═══════════════════ Window Commands ═══════════════════
 
 #[tauri::command]
 fn set_window_mode(app: tauri::AppHandle, mode: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        let settings = app.state::<SettingsStore>();
-        let snap_edge = settings.get().last_snap_edge.clone();
-        window::set_mode(&window, &mode, &snap_edge);
-        if mode == "ball" {
-            if let Ok(pos) = window.outer_position() {
-                let _ = settings.update_ball_position(pos.x, pos.y);
-            }
-        }
-    }
-    Ok(())
-}
-
-#[tauri::command]
-fn get_window_mode() -> Result<String, String> {
-    Ok(window::get_mode())
-}
-
-#[tauri::command]
-fn start_dragging(app: tauri::AppHandle) -> Result<(), String> {
     let window = app.get_webview_window("main").ok_or("window not found")?;
-    window.start_dragging().map_err(|e| e.to_string())?;
-    Ok(())
+    let settings = app.state::<SettingsStore>().get();
+    app.state::<window::WindowState>().set_mode(&window, &settings, &mode)
 }
 
 #[tauri::command]
-fn toggle_panel(app: tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let current = window::get_mode();
-        let next = if current == "panel" { "ball" } else { "panel" };
-        let settings = app.state::<SettingsStore>();
-        let snap_edge = settings.get().last_snap_edge.clone();
-        window::set_mode(&window, &next, &snap_edge);
-        let _ = window.show();
-        let _ = window.set_focus();
-        let _ = app.emit("window:mode", next);
-    }
+fn get_window_mode(state: tauri::State<window::WindowState>) -> &'static str {
+    state.mode()
 }
 
 #[tauri::command]
-fn resize_window(app: tauri::AppHandle, width: f64, height: f64) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        let mode = window::get_mode();
-        if mode == "panel" {
-            let scale = window.scale_factor().map_err(|e| e.to_string())?;
-            let w = (width * scale) as u32;
-            let h = (height * scale) as u32;
-            let pos = window.outer_position().unwrap_or(tauri::PhysicalPosition { x: 0, y: 0 });
-            let size = window.outer_size().unwrap_or(tauri::PhysicalSize { width: 0, height: 0 });
-            let right_top_x = pos.x + size.width as i32;
-            let new_x = right_top_x - w as i32;
-            let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: w, height: h }));
-            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: new_x, y: pos.y }));
-        }
-    }
-    Ok(())
+fn get_bubble_dock(state: tauri::State<window::WindowState>) -> window::BubbleDock {
+    state.dock()
 }
 
 #[tauri::command]
-fn get_screen_work_area(app: tauri::AppHandle) -> Result<edge_snap::WorkArea, String> {
-    if let Some(window) = app.get_webview_window("main") {
-        if let Some(monitor) = window.primary_monitor().map_err(|e| e.to_string())? {
-            let wa = monitor.work_area();
-            return Ok(edge_snap::WorkArea {
-                x: wa.position.x, y: wa.position.y,
-                width: wa.size.width as i32, height: wa.size.height as i32,
-            });
-        }
-    }
-    Ok(edge_snap::WorkArea { x: 0, y: 0, width: 1920, height: 1040 })
+fn set_bubble_hover(
+    window: tauri::WebviewWindow,
+    state: tauri::State<window::WindowState>,
+    store: tauri::State<SettingsStore>,
+    hovered: bool,
+) -> Result<(), String> {
+    state.set_hover(&window, &store.get(), hovered)
 }
 
 #[tauri::command]
-fn snap_to_edge(app: tauri::AppHandle) -> Result<edge_snap::SnapResult, String> {
+fn finish_bubble_tuck(
+    window: tauri::WebviewWindow,
+    state: tauri::State<window::WindowState>,
+    store: tauri::State<SettingsStore>,
+    revision: u32,
+) -> Result<(), String> {
+    state.finish_tuck(&window, &store.get(), revision)
+}
+
+#[tauri::command]
+fn begin_bubble_drag(
+    window: tauri::WebviewWindow,
+    state: tauri::State<window::WindowState>,
+    grab_x: f64,
+    grab_y: f64,
+) -> Result<(), String> {
+    state.begin_drag(&window, grab_x, grab_y)
+}
+
+#[tauri::command]
+fn move_bubble_drag(
+    window: tauri::WebviewWindow,
+    state: tauri::State<window::WindowState>,
+    store: tauri::State<SettingsStore>,
+) -> Result<(), String> {
+    state.move_drag(&window, &store.get())
+}
+
+#[tauri::command]
+fn end_bubble_drag(
+    window: tauri::WebviewWindow,
+    state: tauri::State<window::WindowState>,
+    store: tauri::State<SettingsStore>,
+    moved: bool,
+) -> Result<(), String> {
+    state.end_drag(&window, &store, moved)
+}
+
+#[tauri::command]
+fn toggle_panel(app: tauri::AppHandle) -> Result<(), String> {
     let window = app.get_webview_window("main").ok_or("window not found")?;
-    let pos = window.outer_position().map_err(|e| e.to_string())?;
-    let size = window.outer_size().map_err(|e| e.to_string())?;
-
-    let work_area = get_screen_work_area(app.clone())?;
-    let settings = app.state::<SettingsStore>();
-    let threshold = settings.get().snap_threshold as i32;
-
-    let result = edge_snap::calculate_snap_position(
-        pos.x, pos.y, size.width as i32, size.height as i32, &work_area, threshold,
-    );
-
-    if result.edge != edge_snap::SnapEdge::None {
-        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-            x: result.x, y: result.y,
-        }));
-    }
-
-    let _ = settings.update_snap_edge(result.edge.to_string());
-    Ok(result)
+    let state = app.state::<window::WindowState>();
+    let mode = if state.mode() == "panel" { "ball" } else { "panel" };
+    state.set_mode(&window, &app.state::<SettingsStore>().get(), mode)?;
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())
 }
 
 // ═══════════════════ Utility Commands ═══════════════════
@@ -535,29 +490,35 @@ fn launch_project(engine_path: String, project_dir: String) -> Result<(), String
 /// Returns a JSON with import counts
 #[tauri::command]
 fn db_import_from_path(app: tauri::AppHandle, source_path: String) -> Result<String, String> {
-    let src = std::path::Path::new(&source_path);
+    app.state::<database::DatabaseStore>().replace(|dir| import_database(dir, &source_path))
+}
+
+fn import_database(data_dir: &std::path::Path, source_path: &str) -> Result<String, String> {
+    let src = std::path::Path::new(source_path);
     if !src.exists() {
         return Err(format!("Source DB not found: {}", source_path));
     }
 
     // Get the destination path in app data dir
-    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
     let dest = data_dir.join("GodotMemory.db");
+    if dest.exists() && src.canonicalize().map_err(|e| e.to_string())? == dest.canonicalize().map_err(|e| e.to_string())? {
+        return Err("Source is the current database".into());
+    }
 
-    // Also copy the cache directory if it exists
+    // Copy cached images before switching databases. Cache entries are content-addressed.
     let src_cache = src.parent().unwrap_or(src).join("cache");
-    if src_cache.exists() {
-        let dest_cache = data_dir.join("cache");
-        let _ = std::fs::remove_dir_all(&dest_cache);
+    let dest_cache = data_dir.join("cache");
+    if src_cache.is_dir() && src_cache.canonicalize().ok() != dest_cache.canonicalize().ok() {
         copy_dir_recursive(&src_cache, &dest_cache)?;
     }
 
-    // Copy the DB file
-    std::fs::copy(&src, &dest).map_err(|e| format!("Failed to copy DB: {}", e))?;
+    // Restore a consistent SQLite snapshot, including uncheckpointed WAL data.
+    // Another running instance may still have the destination open.
+    let mut conn = rusqlite::Connection::open(&dest).map_err(|e| e.to_string())?;
+    conn.restore(rusqlite::DatabaseName::Main, src, None::<fn(rusqlite::backup::Progress)>)
+        .map_err(|e| format!("Failed to import DB: {e}"))?;
 
     // Read counts from imported DB
-    let conn = rusqlite::Connection::open(&dest).map_err(|e| e.to_string())?;
     let counts: Vec<(&str, i64)> = vec![
         ("engines", "Engine"),
         ("projs", "Proj"),
@@ -683,6 +644,20 @@ fn scan_project_file(path: String) -> Result<serde_json::Value, String> {
 
 // ───────────────────────────── Entry Point ─────────────────────────────
 
+fn toggle_main_visibility(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if window.is_visible().unwrap_or(false) {
+            if window.hide().is_ok() {
+                window::set_idle_memory_target(&window, true);
+            }
+        } else if window.show().is_ok() {
+            let idle = app.state::<window::WindowState>().mode() == "ball";
+            window::set_idle_memory_target(&window, idle);
+            let _ = window.set_focus();
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -705,12 +680,18 @@ pub fn run() {
             // Initialize settings store
             let settings_store = SettingsStore::new(app.handle().clone());
             app.manage(settings_store);
+            app.manage(database::DatabaseStore::new(data_dir));
+            app.manage(window::WindowState::default());
+            app.manage(sticky_notes::NoteWindows::default());
+            app.manage(quota::QuotaState::default());
 
             // Build system tray
             let show_hide = tauri::menu::MenuItemBuilder::with_id("show_hide", "显示/隐藏").build(app)?;
+            let refresh_quota_item = tauri::menu::MenuItemBuilder::with_id("refresh_quota", "刷新用量").build(app)?;
             let quit = tauri::menu::MenuItemBuilder::with_id("quit", "退出").build(app)?;
             let menu = tauri::menu::MenuBuilder::new(app)
                 .item(&show_hide)
+                .item(&refresh_quota_item)
                 .separator()
                 .item(&quit)
                 .build()?;
@@ -721,14 +702,10 @@ pub fn run() {
                 .on_menu_event(|app, event| {
                     match event.id().as_ref() {
                         "show_hide" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                if window.is_visible().unwrap_or(false) {
-                                    let _ = window.hide();
-                                } else {
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                }
-                            }
+                            toggle_main_visibility(app);
+                        }
+                        "refresh_quota" => {
+                            let _ = app.emit("quota:request-refresh", ());
                         }
                         "quit" => {
                             app.exit(0);
@@ -741,45 +718,17 @@ pub fn run() {
                         button: tauri::tray::MouseButton::Left, ..
                     } = event {
                         let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
-                            } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
+                        toggle_main_visibility(app);
                     }
                 })
                 .build(app)?;
 
             // Window initialization
             if let Some(window) = app.get_webview_window("main") {
-                let settings = app.state::<SettingsStore>();
-                let s = settings.get();
-                let mut use_default = true;
-                if s.remember_position {
-                    if let (Some(x), Some(y)) = (s.last_ball_x, s.last_ball_y) {
-                        if let Ok(Some(monitor)) = window.primary_monitor() {
-                            let wa = monitor.work_area();
-                            let cx = (x as i32).max(wa.position.x).min(wa.position.x + wa.size.width as i32 - window::BALL_SIZE.0 as i32);
-                            let cy = (y as i32).max(wa.position.y).min(wa.position.y + wa.size.height as i32 - window::BALL_SIZE.1 as i32);
-                            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: cx, y: cy }));
-                            use_default = false;
-                        }
-                    }
-                }
-                if use_default {
-                    window::position_ball_default(&window);
-                }
-                let _ = window.set_skip_taskbar(true);
-                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                    width: window::BALL_SIZE.0, height: window::BALL_SIZE.1,
-                }));
-                let _ = window.show();
-                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                    width: window::BALL_SIZE.0, height: window::BALL_SIZE.1,
-                }));
+                let settings = app.state::<SettingsStore>().get();
+                app.state::<window::WindowState>().initialize(&window, &settings)?;
+                window.show()?;
+                window::set_idle_memory_target(&window, true);
             }
 
             // Windows: remove maximize box
@@ -819,8 +768,13 @@ pub fn run() {
             db_set_fast_tag, db_update_tag_color, db_delete_tag,
             db_copy_image_to_cache, db_load_image, db_load_icon, db_extract_exe_icon,
             get_settings, save_settings,
-            set_window_mode, get_window_mode, start_dragging, toggle_panel,
-            resize_window, get_screen_work_area, snap_to_edge,
+            get_quota_snapshot, refresh_quota,
+            set_window_mode, get_window_mode, get_bubble_dock, set_bubble_hover, toggle_panel,
+            finish_bubble_tuck, begin_bubble_drag, move_bubble_drag, end_bubble_drag,
+            sticky_notes::list_sticky_notes, sticky_notes::create_sticky_note,
+            sticky_notes::get_sticky_note, sticky_notes::save_sticky_note,
+            sticky_notes::delete_sticky_note, sticky_notes::open_sticky_note,
+            sticky_notes::sticky_note_window_action, sticky_notes::drag_sticky_note,
             open_folder, launch_app, launch_project, detect_engine_version, scan_project_file,
             db_import_from_path,
         ])

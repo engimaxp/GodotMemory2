@@ -71,12 +71,14 @@
 .sidebar-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 0 var(--animal-shadow-input); }
 
 /* Island app tiles — one pastel hue per panel, like the home screen */
+.sidebar-btn[data-panel="Quota"] { background: rgba(96, 165, 250, 0.5); }
 .sidebar-btn[data-panel="Engine"] { background: rgba(247, 205, 103, 0.55); }
 .sidebar-btn[data-panel="Proj"] { background: rgba(136, 157, 240, 0.5); }
 .sidebar-btn[data-panel="Asset"] { background: rgba(130, 213, 187, 0.55); }
 .sidebar-btn[data-panel="Tool"] { background: rgba(229, 146, 102, 0.5); }
 .sidebar-btn[data-panel="Diary"] { background: rgba(183, 125, 238, 0.45); }
 .sidebar-btn[data-panel="Setting"] { background: rgba(138, 198, 138, 0.5); }
+[data-theme="dark"] .sidebar-btn[data-panel="Quota"] { background: rgba(96, 165, 250, 0.3); }
 [data-theme="dark"] .sidebar-btn[data-panel="Engine"] { background: rgba(247, 205, 103, 0.3); }
 [data-theme="dark"] .sidebar-btn[data-panel="Proj"] { background: rgba(136, 157, 240, 0.3); }
 [data-theme="dark"] .sidebar-btn[data-panel="Asset"] { background: rgba(130, 213, 187, 0.3); }

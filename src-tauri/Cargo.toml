@@ -1,6 +1,6 @@
 [package]
 name = "godot-memory"
-version = "2.0.0"
+version = "2.1.4"
 description = "Godot Engine/Tool/Asset Management Tool - Tauri 2 Port"
 authors = ["you"]
 license = "MIT"
@@ -25,12 +25,16 @@ tauri-plugin-shell = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2"
 raw-window-handle = { version = "0.6", package = "raw-window-handle" }
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.32", features = ["bundled", "backup"] }
 uuid = { version = "1", features = ["v4"] }
 md-5 = "0.10"
+base64 = "0.22"
+imagesize = { version = "0.14", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp"] }
 image = { version = "0.24", default-features = false, features = ["png"] }
 
 [target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows-core = "0.61"
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",

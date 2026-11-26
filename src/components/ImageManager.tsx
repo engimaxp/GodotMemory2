@@ -24,6 +24,7 @@ const ImageManager: React.FC<ImageManagerProps> = ({ initialImages, onChange }) 
     const load = async () => {
       const results: ManagedImage[] = [];
       for (const img of initialImages) {
+        if (cancelled) return;
         try {
           const src = await bridge.dbLoadImage(img.id);
           if (src && !cancelled) results.push({ record: img, src });

@@ -2,7 +2,8 @@
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Manager;
 
@@ -107,6 +108,14 @@ pub struct DiaryDetail {
     pub content: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StickyNote {
+    pub id: String,
+    pub content: String,
+    pub color: String,
+    pub updated_at: String,
+}
+
 impl Default for DiaryDetail {
     fn default() -> Self {
         Self {
@@ -159,6 +168,33 @@ pub struct SearchResult<T> {
 
 // ─── Database Manager ───
 
+pub struct DatabaseStore {
+    data_dir: PathBuf,
+    database: Mutex<Option<Database>>,
+}
+
+impl DatabaseStore {
+    pub fn new(data_dir: PathBuf) -> Self {
+        Self { data_dir, database: Mutex::new(None) }
+    }
+
+    pub fn with<T>(&self, run: impl FnOnce(&Database) -> Result<T, String>) -> Result<T, String> {
+        let mut slot = self.database.lock().map_err(|e| e.to_string())?;
+        let db = match slot.as_ref() {
+            Some(db) => db,
+            None => slot.insert(Database::open(&self.data_dir)?),
+        };
+        run(db)
+    }
+
+    // File imports must have exclusive access, including closing the old WAL connection.
+    pub fn replace<T>(&self, import: impl FnOnce(&Path) -> Result<T, String>) -> Result<T, String> {
+        let mut slot = self.database.lock().map_err(|e| e.to_string())?;
+        *slot = None;
+        import(&self.data_dir)
+    }
+}
+
 pub struct Database {
     conn: Connection,
     cache_dir: PathBuf,
@@ -167,7 +203,11 @@ pub struct Database {
 impl Database {
     pub fn new(app: &AppHandle) -> Result<Self, String> {
         let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-        fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+        Self::open(&data_dir)
+    }
+
+    fn open(data_dir: &Path) -> Result<Self, String> {
+        fs::create_dir_all(data_dir).map_err(|e| e.to_string())?;
 
         let cache_dir = data_dir.join("cache").join("img");
         fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
@@ -221,6 +261,13 @@ impl Database {
                 Id TEXT PRIMARY KEY, CreateDate TEXT NOT NULL,
                 DiaryId TEXT NOT NULL, Content TEXT DEFAULT ''
              );
+             CREATE TABLE IF NOT EXISTS StickyNote (
+                Id TEXT PRIMARY KEY,
+                Content TEXT NOT NULL DEFAULT '',
+                Color TEXT NOT NULL DEFAULT 'honey',
+                UpdatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                Placement TEXT
+             );
              CREATE TABLE IF NOT EXISTS Tag (
                 Id TEXT PRIMARY KEY, Name TEXT, Type INTEGER DEFAULT 0,
                 SubType INTEGER DEFAULT 0, Color TEXT DEFAULT '3b82f6',
@@ -237,10 +284,70 @@ impl Database {
              CREATE TABLE IF NOT EXISTS ImageRelation (
                 ImageId TEXT, Type INTEGER, RelateId TEXT
              );
-             CREATE INDEX IF NOT EXISTS idx_tag_type ON TagRelation(Type);
-             CREATE INDEX IF NOT EXISTS idx_image_type ON ImageRelation(Type);"
+             CREATE INDEX IF NOT EXISTS idx_tag_type_relate ON TagRelation(Type,RelateId);
+             CREATE INDEX IF NOT EXISTS idx_image_type_relate ON ImageRelation(Type,RelateId);"
         ).map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    pub fn list_sticky_notes(&self) -> Result<Vec<StickyNote>, String> {
+        let mut stmt = self.conn.prepare(
+            "SELECT Id, Content, Color, UpdatedAt FROM StickyNote ORDER BY UpdatedAt DESC, Id"
+        ).map_err(|e| e.to_string())?;
+        let rows = stmt.query_map([], Self::sticky_note_from_row).map_err(|e| e.to_string())?;
+        rows.collect::<rusqlite::Result<_>>().map_err(|e| e.to_string())
+    }
+
+    pub fn create_sticky_note(&self) -> Result<StickyNote, String> {
+        let id = uuid::Uuid::new_v4().to_string();
+        self.conn.execute("INSERT INTO StickyNote (Id) VALUES (?1)", [&id])
+            .map_err(|e| e.to_string())?;
+        self.get_sticky_note(&id)
+    }
+
+    pub fn get_sticky_note(&self, id: &str) -> Result<StickyNote, String> {
+        self.conn.query_row(
+            "SELECT Id, Content, Color, UpdatedAt FROM StickyNote WHERE Id=?1",
+            [id], Self::sticky_note_from_row,
+        ).map_err(|e| e.to_string())
+    }
+
+    pub fn save_sticky_note(&self, id: &str, content: &str, color: &str) -> Result<(), String> {
+        if !matches!(color, "honey" | "mint" | "peach" | "lilac" | "sky") {
+            return Err("unknown sticky note color".into());
+        }
+        let changed = self.conn.execute(
+            "UPDATE StickyNote SET Content=?1, Color=?2, UpdatedAt=strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE Id=?3",
+            params![content, color, id],
+        ).map_err(|e| e.to_string())?;
+        if changed == 0 {
+            return Err("sticky note no longer exists".into());
+        }
+        Ok(())
+    }
+
+    pub fn delete_sticky_note(&self, id: &str) -> Result<(), String> {
+        self.conn.execute("DELETE FROM StickyNote WHERE Id=?1", [id])
+            .map(|_| ()).map_err(|e| e.to_string())
+    }
+
+    pub fn sticky_note_placement(&self, id: &str) -> Result<Option<String>, String> {
+        self.conn.query_row("SELECT Placement FROM StickyNote WHERE Id=?1", [id], |row| row.get(0))
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn save_sticky_note_placement(&self, id: &str, placement: &str) -> Result<(), String> {
+        self.conn.execute("UPDATE StickyNote SET Placement=?1 WHERE Id=?2", params![placement, id])
+            .map(|_| ()).map_err(|e| e.to_string())
+    }
+
+    fn sticky_note_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StickyNote> {
+        Ok(StickyNote {
+            id: row.get(0)?,
+            content: row.get(1)?,
+            color: row.get(2)?,
+            updated_at: row.get(3)?,
+        })
     }
 
     fn next_sort(&self, table: &str) -> Result<i64, String> {
@@ -846,7 +953,7 @@ impl Database {
     }
 
     pub fn get_tags_for(&self, relate_id: &str, r#type: i32) -> Result<Vec<Tag>, String> {
-        let mut stmt = self.conn.prepare(
+        let mut stmt = self.conn.prepare_cached(
             "SELECT Tag.Id,Tag.Name,Tag.Color,Tag.Type,Tag.SubType,Tag.IsFast FROM Tag
              JOIN TagRelation ON Tag.Id=TagRelation.TagId
              WHERE TagRelation.RelateId=?1 AND TagRelation.Type=?2"
@@ -880,8 +987,10 @@ impl Database {
             return Err("File not found".to_string());
         }
 
-        let bytes = fs::read(src).map_err(|e| e.to_string())?;
-        let hash = Md5::digest(&bytes);
+        let mut input = fs::File::open(src).map_err(|e| e.to_string())?;
+        let mut digest = Md5::new();
+        std::io::copy(&mut input, &mut digest).map_err(|e| e.to_string())?;
+        let hash = digest.finalize();
         let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("png");
         let cached_name = format!("{:x}.{}", hash, ext);
         let cached_path = self.cache_dir.join(&cached_name);
@@ -892,7 +1001,9 @@ impl Database {
 
         let id = uuid::Uuid::new_v4().to_string();
         let new_path = cached_path.to_string_lossy().to_string();
-        let (w, h) = image_dimensions(src_path).unwrap_or((0, 0));
+        let (w, h) = imagesize::size(&cached_path).ok()
+            .and_then(|size| Some((i32::try_from(size.width).ok()?, i32::try_from(size.height).ok()?)))
+            .unwrap_or((0, 0));
 
         self.conn.execute(
             "INSERT INTO Images (Id,Width,Height,Format,Path,NewPath) VALUES (?1,?2,?3,?4,?5,?6)",
@@ -1086,39 +1197,48 @@ impl Database {
     }
 
     pub fn load_image_base64(&self, id: &str) -> Result<Option<String>, String> {
-        let img: ImageRecord = self.conn.query_row(
-            "SELECT Id,Width,Height,Format,Path,NewPath FROM Images WHERE Id=?1",
-            params![id],
-            |row| Ok(ImageRecord {
-                id: row.get(0)?, width: row.get(1)?, height: row.get(2)?,
-                format: row.get(3)?, path: row.get(4)?, new_path: row.get(5)?,
-            }),
-        ).map_err(|e| e.to_string())?;
+        let (format, path): (Option<String>, String) = self.conn
+            .prepare_cached("SELECT Format,NewPath FROM Images WHERE Id=?1")
+            .and_then(|mut stmt| stmt.query_row([id], |row| Ok((row.get(0)?, row.get(1)?))))
+            .map_err(|e| e.to_string())?;
 
         // Resolve res://data/cache/ to the actual cache directory (migrated data)
-        let actual_path = if img.new_path.contains("res://data/cache/") {
+        let actual_path = if path.contains("res://data/cache/") {
             let cache_root = self.cache_dir.parent().unwrap_or(&self.cache_dir);
-            let relative = img.new_path.replace("res://data/cache/", "");
+            let relative = path.replace("res://data/cache/", "");
             cache_root.join(&relative)
         } else {
-            std::path::PathBuf::from(&img.new_path)
+            PathBuf::from(path)
         };
 
-        let bytes = fs::read(&actual_path).map_err(|e| e.to_string())?;
-        let ext = img.format.as_deref().unwrap_or("png");
+        let mut file = fs::File::open(actual_path).map_err(|e| e.to_string())?;
+        let ext = format.as_deref().unwrap_or("png");
         let mime = match ext {
             "jpg" | "jpeg" | "JPEG" | "JPG" => "image/jpeg",
             "png" | "PNG" => "image/png",
             "webp" | "WEBP" => "image/webp",
+            "gif" | "GIF" => "image/gif",
             "bmp" | "BMP" => "image/bmp",
             "svg" | "SVG" => "image/svg+xml",
             _ => "image/png",
         };
-        Ok(Some(format!("data:{};base64,{}", mime, base64_encode(&bytes))))
+        let mut url = format!("data:{mime};base64,").into_bytes();
+        if let Some(size) = file.metadata().ok()
+            .and_then(|meta| usize::try_from(meta.len()).ok())
+            .and_then(|len| base64::encoded_len(len, true))
+        {
+            url.try_reserve_exact(size).map_err(|e| e.to_string())?;
+        }
+        {
+            let mut encoder = base64::write::EncoderWriter::new(&mut url, &base64::engine::general_purpose::STANDARD);
+            std::io::copy(&mut file, &mut encoder).map_err(|e| e.to_string())?;
+            encoder.finish().map_err(|e| e.to_string())?;
+        }
+        String::from_utf8(url).map(Some).map_err(|e| e.to_string())
     }
 
     pub fn get_images_for(&self, relate_id: &str, r#type: i32) -> Result<Vec<ImageRecord>, String> {
-        let mut stmt = self.conn.prepare(
+        let mut stmt = self.conn.prepare_cached(
             "SELECT Images.Id,Images.Width,Images.Height,Images.Format,Images.Path,Images.NewPath FROM Images
              JOIN ImageRelation ON Images.Id=ImageRelation.ImageId
              WHERE ImageRelation.RelateId=?1 AND ImageRelation.Type=?2"
@@ -1242,37 +1362,6 @@ fn map_tag(row: &rusqlite::Row) -> rusqlite::Result<Tag> {
     })
 }
 
-// ═══════════════════ Image Dimension Parsing ═══════════════════
-
-fn image_dimensions(path: &str) -> Option<(i32, i32)> {
-    let bytes = fs::read(path).ok()?;
-    // PNG
-    if bytes.len() > 24 && bytes[0..8] == [137, 80, 78, 71, 13, 10, 26, 10] {
-        let w = u32::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19]]);
-        let h = u32::from_be_bytes([bytes[20], bytes[21], bytes[22], bytes[23]]);
-        return Some((w as i32, h as i32));
-    }
-    // JPEG
-    if bytes.len() > 4 && bytes[0..2] == [0xFF, 0xD8] {
-        let mut pos = 2;
-        while pos + 9 < bytes.len() {
-            if bytes[pos] == 0xFF {
-                let marker = bytes[pos + 1];
-                if marker == 0xC0 || marker == 0xC1 || marker == 0xC2 {
-                    let h = u16::from_be_bytes([bytes[pos + 5], bytes[pos + 6]]);
-                    let w = u16::from_be_bytes([bytes[pos + 7], bytes[pos + 8]]);
-                    return Some((w as i32, h as i32));
-                }
-                let seg_len = u16::from_be_bytes([bytes[pos + 2], bytes[pos + 3]]);
-                pos += seg_len as usize + 2;
-            } else {
-                pos += 1;
-            }
-        }
-    }
-    None
-}
-
 fn map_proj_row(row: &rusqlite::Row) -> rusqlite::Result<Proj> {
     Ok(Proj {
         id: row.get(0)?, version: row.get(1)?, directory: row.get(2)?,
@@ -1301,30 +1390,6 @@ fn map_tool_row(row: &rusqlite::Row) -> rusqlite::Result<Tool> {
     })
 }
 
-fn base64_encode(bytes: &[u8]) -> String {
-    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::new();
-    for chunk in bytes.chunks(3) {
-        let b0 = chunk[0] as u32;
-        let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
-        let b2 = chunk.get(2).copied().unwrap_or(0) as u32;
-        let triple = (b0 << 16) | (b1 << 8) | b2;
-        result.push(CHARS[((triple >> 18) & 0x3F) as usize] as char);
-        result.push(CHARS[((triple >> 12) & 0x3F) as usize] as char);
-        if chunk.len() > 1 {
-            result.push(CHARS[((triple >> 6) & 0x3F) as usize] as char);
-        } else {
-            result.push('=');
-        }
-        if chunk.len() > 2 {
-            result.push(CHARS[(triple & 0x3F) as usize] as char);
-        } else {
-            result.push('=');
-        }
-    }
-    result
-}
-
 // ═══════════════════ Tests ═══════════════════
 
 #[cfg(test)]
@@ -1339,6 +1404,54 @@ mod tests {
         let mut db = Database { conn, cache_dir };
         db.init_tables().unwrap();
         db
+    }
+
+    #[test]
+    fn cached_connection_is_lazy_and_reopens_after_import() {
+        let dir = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let store = DatabaseStore::new(dir.clone());
+        assert!(!dir.exists());
+        store.with(|db| {
+            db.conn.execute_batch("CREATE TEMP TABLE Marker (Value INTEGER); INSERT INTO Marker VALUES (7)")
+                .map_err(|e| e.to_string())
+        }).unwrap();
+        let value: i32 = store.with(|db| db.conn.query_row("SELECT Value FROM Marker", [], |row| row.get(0))
+            .map_err(|e| e.to_string())).unwrap();
+        assert_eq!(value, 7);
+
+        let other_reader = Database::open(&dir).unwrap();
+        let incoming = dir.join("incoming");
+        let source = Database::open(&incoming).unwrap();
+        let imported = source.create_sticky_note().unwrap();
+        // Keep the source open with committed data still in its WAL.
+        store.replace(|root| crate::import_database(root, &incoming.join("GodotMemory.db").to_string_lossy())).unwrap();
+        store.with(|db| {
+            assert!(db.conn.prepare("SELECT * FROM Marker").is_err());
+            db.get_sticky_note(&imported.id)
+        }).unwrap();
+        assert!(other_reader.get_sticky_note(&imported.id).is_ok());
+        drop(source);
+        drop(other_reader);
+        drop(store);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sticky_note_content_color_and_position_survive_independent_updates() {
+        let db = test_db();
+        let first = db.create_sticky_note().unwrap();
+        let second = db.create_sticky_note().unwrap();
+        db.save_sticky_note_placement(&first.id, r#"{"x":-100,"y":55,"width":350,"height":340}"#).unwrap();
+        db.save_sticky_note(&first.id, "待办事项\n📝", "mint").unwrap();
+        let saved = db.get_sticky_note(&first.id).unwrap();
+        assert_eq!(saved.content, "待办事项\n📝");
+        assert_eq!(saved.color, "mint");
+        assert!(db.sticky_note_placement(&first.id).unwrap().is_some());
+        assert_eq!(db.get_sticky_note(&second.id).unwrap().content, "");
+
+        db.delete_sticky_note(&first.id).unwrap();
+        assert!(db.save_sticky_note(&first.id, "late save", "mint").is_err());
+        assert_eq!(db.list_sticky_notes().unwrap().len(), 1);
     }
 
     #[test]
@@ -1531,6 +1644,10 @@ mod tests {
         let img = db.copy_to_cache(&src.to_string_lossy()).unwrap();
         assert_eq!(img.width, 1);
         assert_eq!(img.height, 1);
+        let url = db.load_image_base64(&img.id).unwrap().unwrap();
+        use base64::Engine as _;
+        let payload = url.strip_prefix("data:image/png;base64,").unwrap();
+        assert_eq!(base64::engine::general_purpose::STANDARD.decode(payload).unwrap(), png_bytes);
         let _ = fs::remove_file(&src);
     }
 }

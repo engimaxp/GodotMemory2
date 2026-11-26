@@ -109,7 +109,84 @@ export interface Page {
 // ─── Window Mode ───
 export type WindowMode = 'ball' | 'panel';
 export type SnapEdge = 'Left' | 'Right' | 'Top' | 'Bottom' | 'None';
-export type PanelName = 'Engine' | 'Proj' | 'Asset' | 'Tool' | 'Diary' | 'Setting';
+
+export interface BubbleDock {
+  edge: SnapEdge;
+  tucked: boolean;
+  revision: number;
+}
+export type PanelName = 'Quota' | 'Engine' | 'Proj' | 'Asset' | 'Tool' | 'Diary' | 'Notes' | 'Setting';
+
+export type BubbleDisplayMode = 'both' | 'codex' | 'antigravity' | 'icon';
+
+export interface QuotaWindow {
+  id: string;
+  label: string;
+  window_kind: '5h' | 'weekly' | 'other' | string;
+  remaining_percent: number;
+  reset_at: string | null;
+  reset_at_epoch: number | null;
+  description: string | null;
+}
+
+export interface QuotaModelGroup {
+  name: string;
+  description: string | null;
+  five_hour: QuotaWindow | null;
+  weekly: QuotaWindow | null;
+  extra_windows: QuotaWindow[];
+}
+
+export interface ProviderQuota {
+  provider: 'codex' | 'antigravity' | string;
+  status: 'ok' | 'error' | string;
+  error: string | null;
+  account_email: string | null;
+  plan_type: string | null;
+  plan_expires_at: string | null;
+  credits_balance: string | null;
+  credits_unlimited: boolean;
+  five_hour: QuotaWindow | null;
+  weekly: QuotaWindow | null;
+  groups: QuotaModelGroup[];
+}
+
+export interface QuotaSnapshot {
+  fetched_at: number;
+  codex: ProviderQuota;
+  antigravity: ProviderQuota;
+}
+
+export type QuotaNoticeTone = 'success' | 'warning' | 'error';
+
+export interface QuotaNotice {
+  id: number;
+  tone: QuotaNoticeTone;
+  message: string;
+}
+
+export const noteColors = ['honey', 'mint', 'peach', 'lilac', 'sky'] as const;
+export type NoteColor = typeof noteColors[number];
+
+export interface NoteDraft {
+  content: string;
+  color: NoteColor;
+}
+
+export interface StickyNote extends NoteDraft {
+  id: string;
+  updated_at: string;
+}
+
+export interface NoteWindowView {
+  edge: SnapEdge;
+  peeking: boolean;
+  retreating: boolean;
+  revision: number;
+}
+
+export type NoteWindowAction = 'ready' | 'minimize' | 'toggle_maximize' | 'tuck' | 'peek' | 'hide_peek' | 'finish_peek' | 'restore' | 'close';
+export type NoteDrag = 'begin' | 'move' | 'end' | 'cancel';
 
 export interface WorkArea {
   x: number;
@@ -131,6 +208,7 @@ export interface Settings {
   screen_shot_dir: string;
   bubble_opacity: number;
   bubble_size: number;
+  bubble_display_mode: BubbleDisplayMode;
   snap_threshold: number;
   remember_position: boolean;
   auto_start: boolean;

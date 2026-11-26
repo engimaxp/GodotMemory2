@@ -209,6 +209,7 @@ describe('Settings Module', () => {
       default_panel: 'Proj',
       bubble_opacity: 0.9,
       bubble_size: 120,
+      bubble_display_mode: 'both',
       snap_threshold: 40,
       remember_position: false,
       auto_start: false,
@@ -219,7 +220,7 @@ describe('Settings Module', () => {
       diary_selected_date: '',
       diary_cursor_pos: 0,
     });
-    await saveSettings({ language: 'en_US', default_panel: 'Proj', bubble_opacity: 0.9, bubble_size: 120, snap_threshold: 40, remember_position: false, auto_start: false, last_snap_edge: 'Right', screen_shot_dir: '', diary_sidebar_collapsed: false, diary_selected_id: '', diary_selected_date: '', diary_cursor_pos: 0 });
+    await saveSettings({ language: 'en_US', default_panel: 'Proj', bubble_opacity: 0.9, bubble_size: 120, bubble_display_mode: 'both', snap_threshold: 40, remember_position: false, auto_start: false, last_snap_edge: 'Right', screen_shot_dir: '', diary_sidebar_collapsed: false, diary_selected_id: '', diary_selected_date: '', diary_cursor_pos: 0 });
     expect(invoke).toHaveBeenCalledWith('save_settings', expect.anything());
   });
 });

@@ -1,16 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { ImageRecord } from '../types';
 import * as bridge from '../bridge';
 
-interface LoadedImage {
-  id: string;
-  src: string;
-  naturalW: number;
-  naturalH: number;
-}
-
 interface ZoomInfo {
-  src: string;
   left: number;
   top: number;
   width: number;
@@ -21,46 +14,26 @@ interface ScreenshotViewProps {
   images: ImageRecord[];
 }
 
-const ScreenshotView: React.FC<ScreenshotViewProps> = ({ images }) => {
-  const [loadedImages, setLoadedImages] = useState<LoadedImage[]>([]);
+function Screenshot({ id, onMissing }: { id: string; onMissing: (id: string) => void }) {
   const [zoom, setZoom] = useState<ZoomInfo | null>(null);
-  const loadIdRef = useRef(0);
-
+  const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
-    const id = ++loadIdRef.current;
-    let cancelled = false;
+    let active = true;
+    bridge.dbLoadImage(id).then(value => {
+      if (!active) return;
+      if (value) setSrc(value);
+      else onMissing(id);
+    }).catch(() => { if (active) onMissing(id); });
+    return () => { active = false; };
+  }, [id, onMissing]);
 
-    const loadAll = async () => {
-      const results: LoadedImage[] = [];
-      for (const img of images) {
-        if (cancelled) return;
-        try {
-          const src = await bridge.dbLoadImage(img.id);
-          if (!src || cancelled) continue;
-          const { w, h } = await new Promise<{ w: number; h: number }>(resolve => {
-            const temp = new Image();
-            temp.onload = () => resolve({ w: temp.naturalWidth, h: temp.naturalHeight });
-            temp.onerror = () => resolve({ w: img.width || 200, h: img.height || 200 });
-            temp.src = src;
-          });
-          if (cancelled) return;
-          results.push({ id: img.id, src, naturalW: w, naturalH: h });
-        } catch {}
-      }
-      if (id === loadIdRef.current) setLoadedImages(results);
-    };
-
-    setLoadedImages([]);
-    setZoom(null);
-    loadAll();
-    return () => { cancelled = true; };
-  }, [images]);
-
-  const handleMouseEnter = useCallback((e: React.MouseEvent, img: LoadedImage) => {
+  function showZoom(e: React.MouseEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    if (!img.naturalWidth || !img.naturalHeight) return;
     const maxW = window.innerWidth * 0.85;
     const maxH = window.innerHeight * 0.85;
-    let w = img.naturalW;
-    let h = img.naturalH;
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
     if (w > maxW) { h = h * maxW / w; w = maxW; }
     if (h > maxH) { w = w * maxH / h; h = maxH; }
     w = Math.round(w);
@@ -73,31 +46,62 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ images }) => {
     if (left < 10) left = 10;
     if (top < 10) top = 10;
 
-    setZoom({ src: img.src, left, top, width: w, height: h });
-  }, []);
+    setZoom({ left, top, width: w, height: h });
+  }
 
-  if (!images.length || !loadedImages.length) return null;
-
+  if (!src) return null;
   return (
     <>
-      <div className="screenshot-strip">
-        {loadedImages.map(img => (
-          <div
-            key={img.id}
-            className="screenshot-thumb"
-            onMouseEnter={e => handleMouseEnter(e, img)}
-            onMouseLeave={() => setZoom(null)}
-          >
-            <img src={img.src} alt="" draggable={false} />
-          </div>
-        ))}
-      </div>
-      {zoom && (
+      <img src={src} alt="" draggable={false} onMouseEnter={showZoom} onMouseLeave={() => setZoom(null)} />
+      {zoom && createPortal(
         <div className="screenshot-zoom" style={{ left: zoom.left, top: zoom.top, width: zoom.width, height: zoom.height }}>
-          <img src={zoom.src} alt="" draggable={false} />
-        </div>
+          <img src={src} alt="" draggable={false} />
+        </div>, document.body
       )}
     </>
+  );
+}
+
+const ScreenshotView: React.FC<ScreenshotViewProps> = ({ images }) => {
+  const strip = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState<Set<string>>(new Set());
+  const [missing, setMissing] = useState<Set<string>>(new Set());
+  const hideMissing = useCallback((id: string) => setMissing(current => new Set(current).add(id)), []);
+  useEffect(() => {
+    setMissing(new Set());
+    setVisible(current => new Set(images.map(img => img.id).filter(id => current.has(id))));
+    const container = strip.current;
+    if (!container) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(new Set(images.map(image => image.id)));
+      return;
+    }
+    let active = true;
+    const observer = new IntersectionObserver(entries => {
+      if (!active) return;
+      setVisible(current => {
+        const next = new Set(current);
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.id!;
+          if (entry.isIntersecting) next.add(id);
+          else next.delete(id);
+        }
+        return next;
+      });
+    }, { rootMargin: '80px' });
+    for (const thumb of container.children) observer.observe(thumb);
+    return () => { active = false; observer.disconnect(); };
+  }, [images]);
+
+  if (!images.length) return null;
+  return (
+    <div ref={strip} className="screenshot-strip" style={images.every(img => missing.has(img.id)) ? { display: 'none' } : undefined}>
+      {images.map(img => (
+        <div key={img.id} data-id={img.id} className="screenshot-thumb" hidden={missing.has(img.id)}>
+          {visible.has(img.id) && !missing.has(img.id) && <Screenshot id={img.id} onMissing={hideMissing} />}
+        </div>
+      ))}
+    </div>
   );
 };
 

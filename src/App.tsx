@@ -1,30 +1,172 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { Bubble } from './components/Bubble';
-import { PopupPanel } from './components/PopupPanel';
-import { ToastProvider } from './components/Toast';
-import EnginePanel from './panels/EnginePanel';
-import ProjPanel from './panels/ProjPanel';
-import AssetPanel from './panels/AssetPanel';
-import ToolPanel from './panels/ToolPanel';
-import DiaryPanel from './panels/DiaryPanel';
-import SettingPanel, { SettingsStyles } from './panels/SettingPanel';
-import { I18nProvider, type Language } from './i18n';
+import { I18nProvider, useI18n, type Language } from './i18n';
 import * as bridge from './bridge';
-import type { WindowMode, PanelName, SnapEdge, Settings } from './types';
-import './styles/Bubble.css';
-import './styles/PopupPanel.css';
-import './styles/panels.css';
+import type {
+  BubbleDisplayMode,
+  BubbleDock,
+  PanelName,
+  QuotaNotice,
+  QuotaSnapshot,
+  Settings,
+  WindowMode,
+} from './types';
+
+const MainPanel = lazy(() => import('./components/MainPanel'));
+
+interface MainWindowBodyProps {
+  settings: Settings | null;
+  onUpdateSettings: (partial: Partial<Settings>) => Promise<void>;
+}
+
+function MainWindowBody({ settings, onUpdateSettings }: MainWindowBodyProps) {
+  const { t } = useI18n();
+  const [windowMode, setWindowMode] = useState<WindowMode>('ball');
+  const [activePanel, setActivePanel] = useState<PanelName>(
+    (settings?.default_panel as PanelName) || 'Engine',
+  );
+  const [dock, setDock] = useState<BubbleDock>({ edge: 'None', tucked: false, revision: 0 });
+  const [quota, setQuota] = useState<QuotaSnapshot | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  const [quotaNotice, setQuotaNotice] = useState<QuotaNotice | null>(null);
+
+  const startupFetched = useRef(false);
+  const refreshingRef = useRef(false);
+  const noticeSeq = useRef(0);
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  useEffect(() => {
+    if (settings?.default_panel) {
+      setActivePanel(settings.default_panel as PanelName);
+    }
+  }, [settings?.default_panel]);
+
+  const emitNotice = useCallback((tone: QuotaNotice['tone'], message: string) => {
+    noticeSeq.current += 1;
+    setQuotaNotice({ id: noticeSeq.current, tone, message });
+  }, []);
+
+  const refreshQuota = useCallback(async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+    setQuotaLoading(true);
+    try {
+      const snap = await bridge.refreshQuota();
+      setQuota(snap);
+
+      const codexOk = snap.codex.status === 'ok';
+      const agyOk = snap.antigravity.status === 'ok';
+
+      if (codexOk && agyOk) {
+        emitNotice('success', tRef.current('quota.toast_success'));
+      } else if (codexOk || agyOk) {
+        const failed = !codexOk
+          ? `Codex: ${snap.codex.error || 'Error'}`
+          : `Antigravity: ${snap.antigravity.error || 'Error'}`;
+        emitNotice('warning', tRef.current('quota.toast_partial', { detail: failed }));
+      } else {
+        const detail = [
+          snap.codex.error ? `Codex: ${snap.codex.error}` : null,
+          snap.antigravity.error ? `Antigravity: ${snap.antigravity.error}` : null,
+        ]
+          .filter(Boolean)
+          .join(' | ');
+        emitNotice('error', tRef.current('quota.toast_error', { detail: detail || 'Unknown error' }));
+      }
+    } catch (error) {
+      emitNotice('error', tRef.current('quota.toast_error', { detail: String(error) }));
+    } finally {
+      refreshingRef.current = false;
+      setQuotaLoading(false);
+    }
+  }, [emitNotice]);
+
+  // Initial dock sync + one-time startup quota query (no polling).
+  useEffect(() => {
+    if (startupFetched.current) return;
+    startupFetched.current = true;
+
+    void bridge.getBubbleDock().then(currentDock => {
+      if (currentDock) setDock(currentDock);
+    }).catch(() => {});
+
+    void refreshQuota();
+  }, [refreshQuota]);
+
+  // Keep rendering in sync with the native window's size, position, and tray refresh trigger.
+  useEffect(() => {
+    const listeners = [
+      listen<WindowMode>('window:mode', (event) => setWindowMode(event.payload)),
+      listen<BubbleDock>('bubble:dock', (event) => setDock(event.payload)),
+      listen<QuotaSnapshot>('quota:updated', (event) => setQuota(event.payload)),
+      listen('quota:request-refresh', () => { void refreshQuota(); }),
+    ];
+    return () => { for (const listener of listeners) void listener.then(fn => fn()); };
+  }, [refreshQuota]);
+
+  // Listen for panel switch events from child panels
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const panel = (e as CustomEvent).detail as PanelName;
+      if (panel) setActivePanel(panel);
+    };
+    window.addEventListener('switch-panel', handler);
+    return () => window.removeEventListener('switch-panel', handler);
+  }, []);
+
+  const switchMode = useCallback(async (mode: WindowMode) => {
+    try {
+      await bridge.setWindowMode(mode);
+      setWindowMode(mode);
+    } catch (error) {
+      console.error('Window mode change failed', error);
+    }
+  }, []);
+
+  const displayMode: BubbleDisplayMode = settings?.bubble_display_mode || 'both';
+
+  return (
+    <div className="app-container">
+      {windowMode === 'ball' && (
+        <Bubble
+          dock={dock}
+          onActivate={() => { void switchMode('panel'); }}
+          opacity={settings?.bubble_opacity ?? 0.85}
+          size={settings?.bubble_size ?? 110}
+          displayMode={displayMode}
+          quota={quota}
+          quotaLoading={quotaLoading}
+          quotaNotice={quotaNotice}
+        />
+      )}
+
+      {windowMode === 'panel' && (
+        <Suspense fallback={null}>
+          <MainPanel
+            activePanel={activePanel}
+            onPanelChange={setActivePanel}
+            snappedEdge={dock.edge}
+            onClose={() => { void switchMode('ball'); }}
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
+            quota={quota}
+            quotaLoading={quotaLoading}
+            quotaNotice={quotaNotice}
+            onRefreshQuota={() => { void refreshQuota(); }}
+          />
+        </Suspense>
+      )}
+    </div>
+  );
+}
 
 // Main application window component
 function MainWindow() {
-  const [windowMode, setWindowMode] = useState<WindowMode>('ball');
-  const [activePanel, setActivePanel] = useState<PanelName>('Engine');
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [snappedEdge, setSnappedEdge] = useState<SnapEdge>('None');
   const [initialized, setInitialized] = useState(false);
-
   const initDone = useRef(false);
 
   // Load settings on mount
@@ -36,37 +178,24 @@ function MainWindow() {
       try {
         const s = await bridge.getSettings();
         setSettings(s);
-        setActivePanel((s.default_panel as PanelName) || 'Engine');
-        setSnappedEdge(s.last_snap_edge || 'None');
 
-        // Apply theme from system preference
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (!document.documentElement.dataset.themeExplicit) {
           document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
         }
-
-        setInitialized(true);
       } catch (e) {
         console.error('Failed to load settings', e);
+      } finally {
         setInitialized(true);
       }
     };
-    load();
-  }, []);
-
-  // Listen for window mode changes from system tray
-  useEffect(() => {
-    const unlisten = listen<string>('window:mode', (event) => {
-      setWindowMode(event.payload as WindowMode);
-    });
-    return () => { unlisten.then(fn => fn()); };
+    void load();
   }, []);
 
   // Follow the OS colour scheme (island palette has a dimmed parchment night mode)
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
-      // Respect an explicit choice made in the Setting panel
       const explicit = document.documentElement.dataset.themeExplicit;
       if (explicit) return;
       document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
@@ -74,16 +203,6 @@ function MainWindow() {
     apply();
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
-  }, []);
-
-  // Listen for panel switch events from child panels
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const panel = (e as CustomEvent).detail as PanelName;
-      if (panel) setActivePanel(panel);
-    };
-    window.addEventListener('switch-panel', handler);
-    return () => window.removeEventListener('switch-panel', handler);
   }, []);
 
   // Updates settings
@@ -98,117 +217,13 @@ function MainWindow() {
     }
   }, [settings]);
 
-  // Bubble drag handling
-  const dragRef = useRef<{ startX: number; startY: number; dragging: boolean }>({
-    startX: 0, startY: 0, dragging: false,
-  });
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      dragging: false,
-    };
-  }, []);
-
-  const handleMouseMove = useCallback(async (e: React.MouseEvent) => {
-    if (!dragRef.current.startX) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      if (!dragRef.current.dragging) {
-        dragRef.current.dragging = true;
-        try {
-          await bridge.startDragging();
-        } catch {}
-      }
-    }
-  }, []);
-
-  const handleMouseUp = useCallback(async (_e: React.MouseEvent, onClick: () => void) => {
-    if (!dragRef.current.dragging) {
-      onClick();
-    }
-    dragRef.current = { startX: 0, startY: 0, dragging: false };
-  }, []);
-
-  const switchToPanel = useCallback(async () => {
-    try {
-      await bridge.setWindowMode('panel');
-      await bridge.resizeWindow(750, 750);
-    } catch {}
-  }, []);
-
-  const switchToBall = useCallback(async () => {
-    try {
-      await bridge.setWindowMode('ball');
-    } catch {}
-  }, []);
-
-  const handleBubbleClick = useCallback(async () => {
-    if (windowMode === 'ball') {
-      await switchToPanel();
-      setWindowMode('panel');
-    }
-  }, [windowMode, switchToPanel]);
-
-  const handleClosePanel = useCallback(async () => {
-    await switchToBall();
-    setWindowMode('ball');
-  }, [switchToBall]);
-
-  const handlePanelChange = useCallback((panel: PanelName) => {
-    setActivePanel(panel);
-  }, []);
-
-  // Panel rendering
-  const renderPanel = () => {
-    switch (activePanel) {
-      case 'Engine': return <EnginePanel />;
-      case 'Proj': return <ProjPanel />;
-      case 'Asset': return <AssetPanel />;
-      case 'Tool': return <ToolPanel />;
-      case 'Diary': return <DiaryPanel />;
-      case 'Setting': return (
-        <SettingPanel settings={settings} onUpdateSettings={updateSettings} />
-      );
-      default: return <EnginePanel />;
-    }
-  };
-
   if (!initialized) return null;
 
   const lang = (settings?.language || 'zh_CN') as Language;
 
   return (
     <I18nProvider language={lang}>
-    <ToastProvider>
-    <div className="app-container">
-      <SettingsStyles />
-
-      {windowMode === 'ball' && (
-        <Bubble
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={(e) => handleMouseUp(e, handleBubbleClick)}
-          opacity={settings?.bubble_opacity ?? 0.85}
-          size={settings?.bubble_size ?? 110}
-        />
-      )}
-
-      {windowMode === 'panel' && (
-        <PopupPanel
-          visible={true}
-          onClose={handleClosePanel}
-          snappedEdge={snappedEdge}
-          activePanel={activePanel}
-          onPanelChange={handlePanelChange}
-        >
-          {renderPanel()}
-        </PopupPanel>
-      )}
-    </div>
-    </ToastProvider>
+      <MainWindowBody settings={settings} onUpdateSettings={updateSettings} />
     </I18nProvider>
   );
 }
@@ -223,16 +238,7 @@ function SettingsWindow() {
 }
 
 export default function App() {
-  const [isSettings, setIsSettings] = useState(false);
-
-  useEffect(() => {
-    try {
-      const label = getCurrentWindow().label;
-      setIsSettings(label === 'settings');
-    } catch {
-      setIsSettings(false);
-    }
-  }, []);
-
-  return isSettings ? <SettingsWindow /> : <MainWindow />;
+  let label = 'main';
+  try { label = getCurrentWindow().label; } catch { /* Browser preview. */ }
+  return label === 'settings' ? <SettingsWindow /> : <MainWindow />;
 }

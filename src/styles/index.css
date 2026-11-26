@@ -13,7 +13,7 @@
      7. no right angles, no pure black text, no cold gray backgrounds
    ========================================================================= */
 
-/* Rounded type is loaded non-blocking via <link> in index.html
+/* Rounded type is loaded non-blocking by text windows
    (Google Fonts: Nunito + Noto Sans SC). System fallbacks below cover offline. */
 
 /* ─── Tokens ─────────────────────────────────────────────────────────── */
@@ -249,3 +249,18 @@ strong, b { font-weight: 700; }
   max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis;
 }
 .toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--success {
+  border-color: var(--animal-success);
+  color: #3f7a12;
+}
+[data-theme="dark"] .toast--success { color: #b7e986; }
+.toast--warning {
+  border-color: var(--animal-warning);
+  color: #8c6405;
+}
+[data-theme="dark"] .toast--warning { color: #ffe08a; }
+.toast--error {
+  border-color: var(--animal-error);
+  color: var(--animal-error-active);
+}
+[data-theme="dark"] .toast--error { color: #ffb3b3; }
